@@ -46,6 +46,7 @@ func main() {
 	c.POST("/user/logout", handler.Logout)
 	c.GET("/user/friend-requests/:userId", handler.GetFriendRequests)
 	c.GET("/user/list-friends", handler.GetListFriends)
+	c.POST("/user/update-interaction/:id", handler.UpdateInteraction)
 
 	e.Logger.Fatal(e.Start(port))
 }

@@ -32,6 +32,14 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) err
 	return nil
 }
 
+func (s *Service) GetUserByUsername(ctx context.Context, username string) (*User, error) {
+	user, err := s.r.GetUserByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func (s *Service) VerifyUser(ctx context.Context, username, password string) error {
 	user, err := s.r.GetUserByUsername(ctx, username)
 	if err != nil {
@@ -89,6 +97,14 @@ func (s *Service) GetFriends(ctx context.Context, username string, limit, offset
 		return nil, err
 	}
 	return friends, nil
+}
+
+func (s *Service) UpdateInteraction(ctx context.Context, idUser, idFriend string) error {
+	err := s.r.UpdateInteraction(ctx, idUser, idFriend)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //func (s *Service) CreateNewChat(ctx context.Context, userId, friendId string) error {

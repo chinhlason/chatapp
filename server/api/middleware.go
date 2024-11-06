@@ -14,7 +14,7 @@ func CheckLogin(rd *redis.Client) echo.MiddlewareFunc {
 			// check in redis
 			token := c.Request().Header.Get("Authorization")
 			token = strings.TrimPrefix(token, "Bearer ")
-			username, err := ValidateToken(token)
+			username, id, err := ValidateToken(token)
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, Response{
 					Code:    http.StatusUnauthorized,
@@ -30,6 +30,7 @@ func CheckLogin(rd *redis.Client) echo.MiddlewareFunc {
 					Data:    nil,
 				})
 			}
+			c.Set("id", id)
 			return next(c)
 		}
 	}

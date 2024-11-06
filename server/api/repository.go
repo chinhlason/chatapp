@@ -142,3 +142,13 @@ func (r *Repository) AddUserToRoom(ctx context.Context, idUser, idRoom, idRole s
 	}
 	return nil
 }
+
+func (r *Repository) UpdateInteraction(ctx context.Context, idUser, idFriend string) error {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_, err := r.db.Exec("UPDATE friends SET interaction_at = $1 WHERE id_user = $2 AND id_friend = $3", time.Now(), idUser, idFriend)
+	if err != nil {
+		return err
+	}
+	return nil
+}
