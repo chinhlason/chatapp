@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS friends (
     interaction_at timestamp
 );
 
-INSERT INTO friends (id_user, id_friend, status) VALUES (1, 2, 'PENDING');
+INSERT INTO friends (id_user, id_friend, status) VALUES (1, 2, 'ACCEPTED');
 INSERT INTO friends (id_user, id_friend, status) VALUES (1, 3, 'PENDING');
 -- INSERT INTO friends (id_user, id_friend, status) VALUES (1, 4, 'PENDING');
 INSERT INTO friends (id_user, id_friend, status) VALUES (1, 5, 'PENDING');

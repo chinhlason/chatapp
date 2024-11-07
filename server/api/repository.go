@@ -63,11 +63,23 @@ func (r *Repository) FriendRequest(ctx context.Context, userId, friendId string)
 func (r *Repository) ChangeFriendRequestStatus(ctx context.Context, id, status string) error {
 	_, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := r.db.Exec("UPDATE friends SET status = $1 WHERE friends.id = $2", status, id)
+	_, err := r.db.Exec("UPDATE friends SET status = $1 WHERE friends.id = $2 ", status, id)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (r *Repository) ChangeFriendRequestStatusAndReturnId(ctx context.Context, tx *sql.Tx, id, status string) (string, string, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var userId, friendId string
+	err := tx.QueryRow("UPDATE friends SET status = $1 WHERE friends.id = $2 RETURNING friends.id_user, friends.id_friend",
+		status, id).Scan(&userId, &friendId)
+	if err != nil {
+		return "", "", err
+	}
+	return userId, friendId, nil
 }
 
 func (r *Repository) GetFriendRequests(ctx context.Context, userId string) ([]FriendRequest, error) {
@@ -99,12 +111,26 @@ func (r *Repository) GetFriendRequests(ctx context.Context, userId string) ([]Fr
 func (r *Repository) GetListFriends(ctx context.Context, username string, limit, offset int) ([]Friend, error) {
 	_, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	rows, err := r.db.Query("select f.id as id, frd.username as username, f.interaction_at as interaction_at "+
-		"from friends f "+
-		"join users frd on frd.id = f.id "+
-		"join users u on u.id = f.id_user "+
-		"where u.username = $1 and f.status = 'ACCEPTED' "+
-		"order by f.interaction_at desc limit $2 offset $3",
+	rows, err := r.db.Query("SELECT "+
+		"COALESCE(MAX(r.id), 0) AS id_room, "+
+		"f.id AS id_friend, "+
+		"frd.username AS friend_username, "+
+		"COALESCE(MAX(f.interaction_at), '2021-01-01 00:00:00') AS interaction_at "+
+		"FROM "+
+		"friends f "+
+		"JOIN "+
+		"users u ON u.id = f.id_user "+
+		"JOIN users frd ON frd.id = f.id_friend "+
+		"LEFT JOIN user_in_room uir1 ON uir1.id_user = u.id "+
+		"LEFT JOIN user_in_room uir2 ON uir2.id_user = frd.id AND uir1.id_room = uir2.id_room "+
+		"LEFT JOIN rooms r ON r.id = uir1.id_room AND r.id = uir2.id_room "+
+		"WHERE "+
+		"u.username = $1 "+
+		"AND f.status = 'ACCEPTED' "+
+		"GROUP BY "+
+		"f.id, frd.username "+
+		"ORDER BY interaction_at DESC "+
+		"LIMIT $2 OFFSET $3",
 		username, limit, offset)
 	if err != nil {
 		return nil, err
@@ -113,7 +139,7 @@ func (r *Repository) GetListFriends(ctx context.Context, username string, limit,
 	var friends []Friend
 	for rows.Next() {
 		var friend Friend
-		err := rows.Scan(&friend.Id, &friend.Username, &friend.InteractionAt)
+		err := rows.Scan(&friend.IdRoom, &friend.Id, &friend.Username, &friend.InteractionAt)
 		if err != nil {
 			return nil, err
 		}
@@ -122,21 +148,21 @@ func (r *Repository) GetListFriends(ctx context.Context, username string, limit,
 	return friends, nil
 }
 
-func (r *Repository) CreateChatRoom(ctx context.Context, name string) (string, error) {
+func (r *Repository) CreateChatRoom(ctx context.Context, tx *sql.Tx, name string) (string, error) {
 	_, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	var id string
-	err := r.db.QueryRow("INSERT INTO rooms (name) VALUES ($1) RETURNING id", name).Scan(&id)
+	err := tx.QueryRow("INSERT INTO rooms (name) VALUES ($1) RETURNING id", name).Scan(&id)
 	if err != nil {
 		return "", err
 	}
 	return id, nil
 }
 
-func (r *Repository) AddUserToRoom(ctx context.Context, idUser, idRoom, idRole string) error {
+func (r *Repository) AddUserToRoom(ctx context.Context, tx *sql.Tx, idUser, idRoom, idRole string) error {
 	_, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := r.db.Exec("INSERT INTO user_in_room (id_user, id_room, id_role) VALUES ($1, $2, $3)", idUser, idRoom, idRole)
+	_, err := tx.Exec("INSERT INTO user_in_room (id_user, id_room, id_role) VALUES ($1, $2, $3)", idUser, idRoom, idRole)
 	if err != nil {
 		return err
 	}
@@ -151,4 +177,21 @@ func (r *Repository) UpdateInteraction(ctx context.Context, idUser, idFriend str
 		return err
 	}
 	return nil
+}
+
+func (r *Repository) IsExistChatRoom(ctx context.Context, tx *sql.Tx, idUser1, idUser2 string) (string, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var id string
+	err := tx.QueryRow("SELECT "+
+		"r.id AS id_room "+
+		"FROM rooms r "+
+		"JOIN user_in_room u1 ON u1.id_room = r.id "+
+		"JOIN user_in_room u2 ON u2.id_room = r.id "+
+		"WHERE u1.id_user = $1 "+
+		"AND u2.id_user = $2", idUser1, idUser2).Scan(&id)
+	if err != nil || id == "" {
+		return "", nil
+	}
+	return id, nil
 }

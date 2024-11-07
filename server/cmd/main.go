@@ -47,6 +47,7 @@ func main() {
 	c.GET("/user/friend-requests/:userId", handler.GetFriendRequests)
 	c.GET("/user/list-friends", handler.GetListFriends)
 	c.POST("/user/update-interaction/:id", handler.UpdateInteraction)
+	c.POST("/user/friend-request/accepted/:id", handler.AcceptFriendRequest)
 
 	e.Logger.Fatal(e.Start(port))
 }

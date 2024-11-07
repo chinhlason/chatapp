@@ -125,6 +125,44 @@ func (h *Handler) GetFriendRequests(c echo.Context) error {
 	})
 }
 
+func (h *Handler) SendFriendRequest(c echo.Context) error {
+	idUser := c.Get("id")
+	idStr := idUser.(string)
+	idFriend := c.Param("id")
+	err := h.s.SentFriendRequest(c.Request().Context(), idStr, idFriend)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest,
+			Response{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
+			})
+	}
+	return c.JSON(http.StatusOK, Response{
+		Code:    http.StatusOK,
+		Message: "Friend request sent",
+		Data:    time.Now(),
+	})
+}
+
+func (h *Handler) AcceptFriendRequest(c echo.Context) error {
+	id := c.Param("id")
+	err := h.s.AcceptFriendRequest(c.Request().Context(), id)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest,
+			Response{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
+			})
+	}
+	return c.JSON(http.StatusOK, Response{
+		Code:    http.StatusOK,
+		Message: "Friend request accepted",
+		Data:    time.Now(),
+	})
+}
+
 func (h *Handler) GetListFriends(c echo.Context) error {
 	limit := c.QueryParam("limit")
 	page := c.QueryParam("page")
