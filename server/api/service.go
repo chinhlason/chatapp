@@ -75,39 +75,39 @@ func (s *Service) SentFriendRequest(ctx context.Context, userId, friendId string
 	return nil
 }
 
-func (s *Service) AcceptFriendRequest(ctx context.Context, id string) error {
+func (s *Service) AcceptFriendRequest(ctx context.Context, id string) (string, error) {
 	tx, err := s.r.db.Begin()
 	if err != nil {
-		return err
+		return "", err
 	}
 	idUser, idFriend, err := s.r.ChangeFriendRequestStatusAndReturnId(ctx, tx, id, "ACCEPTED")
 	if err != nil {
 		_ = tx.Rollback()
-		return err
+		return "", err
 	}
 	idRoom, err := s.r.IsExistChatRoom(ctx, tx, idUser, idFriend)
 	if err != nil {
 		_ = tx.Rollback()
-		return err
+		return "", err
 	}
 	if idRoom == "" {
 		idRoom, err = s.r.CreateChatRoom(ctx, tx, "new chat room")
 		if err != nil {
 			_ = tx.Rollback()
-			return err
+			return "", err
 		}
 	}
 	err = s.r.AddUserToRoom(ctx, tx, idUser, idRoom, "2")
 	if err != nil {
 		_ = tx.Rollback()
-		return err
+		return "", err
 	}
 	err = s.r.AddUserToRoom(ctx, tx, idFriend, idRoom, "2")
 	if err != nil {
 		_ = tx.Rollback()
-		return err
+		return "", err
 	}
-	return tx.Commit()
+	return idRoom, tx.Commit()
 }
 
 func (s *Service) RejectFriendRequest(ctx context.Context, id string) error {

@@ -1,15 +1,16 @@
 package main
 
 import (
+	"chatapp/server/api"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
 	"sync"
-	"time"
 )
 
 type Client struct {
@@ -34,17 +35,32 @@ var (
 )
 
 type WebSocketServer struct {
-	db *sql.DB
+	handler *api.Handler
 }
 
-func NewWebSocketServer(db *sql.DB) *WebSocketServer {
-	return &WebSocketServer{db: db}
+func NewWebSocketServer(db *api.Handler) *WebSocketServer {
+	return &WebSocketServer{handler: db}
 }
 
 type message struct {
 	MessageType string `json:"messageType"`
 	SenderId    string `json:"senderId"`
 	Message     string `json:"message"`
+}
+
+type notification struct {
+	NotificationType string `json:"notificationType"`
+	SenderId         string `json:"senderId"`
+	ReceiverId       string `json:"receiverId"`
+	Content          string `json:"content"`
+	CreateAt         string `json:"createAt"`
+}
+
+type friendRequest struct {
+	Id         string `json:"id"`
+	SenderId   string `json:"senderId"`
+	ReceiverId string `json:"receiverId"`
+	Status     string `json:"status"`
 }
 
 func (ws *WebSocketServer) HandleConnects(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +105,67 @@ func (ws *WebSocketServer) HandleConnects(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (ws *WebSocketServer) handleConnectNotificationServer(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrade.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("err while upgrading connection: ", err)
+		return
+	}
+	userId := r.URL.Query().Get("userId")
+	if userId == "" {
+		log.Println("userId is empty")
+		return
+	}
+
+	client := &Client{
+		userId: userId,
+		Conn:   conn,
+	}
+
+	ws.addClientToRoom("global", client)
+
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("error while reading message: ", err)
+			return
+		}
+		var notificationPack notification
+		err = json.Unmarshal(msg, &notificationPack)
+		if err != nil {
+			log.Println("error while unmarshalling message: ", err)
+		}
+		log.Println("\nnotification received: ", notificationPack.NotificationType)
+
+	}
+
+}
+
+func (ws *WebSocketServer) broadcastFriendNotification(roomId string, msg []byte) {
+	mu.Lock()
+	defer mu.Unlock()
+	room, ok := chatRooms[roomId]
+	if !ok {
+		log.Println("room not found")
+		return
+	}
+
+	var frReq friendRequest
+	err := json.Unmarshal(msg, &frReq)
+	if err != nil {
+		log.Println("error while unmarshalling message: ", err)
+	}
+
+	for id, client := range room.Clients {
+		if id == frReq.ReceiverId {
+			err := client.Conn.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				log.Println("error while writing message: ", err)
+			}
+		}
+	}
+}
+
 func (ws *WebSocketServer) addClientToRoom(roomId string, client *Client) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -119,7 +196,7 @@ func (ws *WebSocketServer) broadcastMessage(senderid, roomId string, msg []byte)
 			}
 		}
 	}
-	ws.db.QueryRow("INSERT INTO messages (id_sender, id_receiver, content, create_at) VALUES ($1, $2, $3, $4)", senderid, roomId, string(msg), time.Now())
+
 	fmt.Println("message sent to room: ", roomId)
 }
 
@@ -140,7 +217,18 @@ func (ws *WebSocketServer) removeClientFromRoom(roomId, userid string) {
 func main() {
 	db, _ := sql.Open("postgres", "postgresql://root:root@localhost:5432/db?sslmode=disable")
 
-	ws := NewWebSocketServer(db)
+	repo := api.NewRepository(db)
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6378",
+		Password: "",
+		DB:       0,
+	})
+
+	ser := api.NewService(repo, rdb)
+
+	handler := api.NewHandler(ser)
+
+	ws := NewWebSocketServer(handler)
 
 	http.HandleFunc("/ws", ws.HandleConnects)
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -147,7 +148,7 @@ func (h *Handler) SendFriendRequest(c echo.Context) error {
 
 func (h *Handler) AcceptFriendRequest(c echo.Context) error {
 	id := c.Param("id")
-	err := h.s.AcceptFriendRequest(c.Request().Context(), id)
+	idRoom, err := h.s.AcceptFriendRequest(c.Request().Context(), id)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest,
 			Response{
@@ -159,8 +160,16 @@ func (h *Handler) AcceptFriendRequest(c echo.Context) error {
 	return c.JSON(http.StatusOK, Response{
 		Code:    http.StatusOK,
 		Message: "Friend request accepted",
-		Data:    time.Now(),
+		Data:    idRoom,
 	})
+}
+
+func (h *Handler) AcceptFriendRequestTest(ctx context.Context, id string) (string, error) {
+	idRoom, err := h.s.AcceptFriendRequest(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return idRoom, nil
 }
 
 func (h *Handler) GetListFriends(c echo.Context) error {

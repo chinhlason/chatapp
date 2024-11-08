@@ -25,7 +25,7 @@ func main() {
 
 	//connect to redis
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "localhost:6378",
 		Password: "",
 		DB:       0,
 	})
