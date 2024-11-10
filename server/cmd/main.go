@@ -33,6 +33,7 @@ func main() {
 	repo := api.NewRepository(db)
 	service := api.NewService(repo, rdb)
 	handler := api.NewHandler(service)
+	ws := api.NewWebSocketServer(handler, service)
 	e := echo.New()
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -55,6 +56,9 @@ func main() {
 	c.GET("/user/list-friends", handler.GetListFriends)
 	c.POST("/user/update-interaction/:id", handler.UpdateInteraction)
 	c.POST("/user/friend-request/accepted/:id", handler.AcceptFriendRequest)
-
+	c.GET("/messages/room/:id_room", handler.GetMessages)
+	c.GET("/messages/room/:id_room/:id_msg", handler.GetMessagesOlder)
+	e.GET("/ws", ws.HandleConnects)
+	e.GET("/ws/notification", ws.HandleConnectMsgNotificationServer)
 	e.Logger.Fatal(e.Start(port))
 }

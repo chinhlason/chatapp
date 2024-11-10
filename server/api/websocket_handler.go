@@ -16,7 +16,7 @@ type Rooms struct {
 	Clients map[string]*Clients
 }
 
-type Messages struct {
+type MessagesWs struct {
 	IdSender   string    `json:"id_sender"`
 	IdReceiver string    `json:"id_receiver"`
 	Content    string    `json:"content"`
@@ -27,7 +27,7 @@ type Hub struct {
 	Rooms      map[string]*Rooms
 	Register   chan *Clients
 	Unregister chan *Clients
-	Broadcast  chan *Messages
+	Broadcast  chan *MessagesWs
 }
 
 type WebSocketHandler struct {

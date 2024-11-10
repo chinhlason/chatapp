@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' ws://localhost:8080;">
+    <title>WebSocket Client</title>
+</head>
+<body>
+<h1>WebSocket Chat Client</h1>
+
+<div>
+    <label for="message">Message:</label>
+    <input type="text" id="message" placeholder="Enter your message">
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<div id="chat">
+    <h2>Chat Messages:</h2>
+</div>
+
+<script>
+    // Thay đổi URL theo WebSocket server của bạn
+    const socketUrl = 'ws://localhost:8080/ws?roomId=1&userId=2';
+    let socket;
+
+    function connectWebSocket() {
+        // Khởi tạo kết nối WebSocket
+        socket = new WebSocket(socketUrl);
+
+        // Khi kết nối được mở
+        socket.onopen = function(event) {
+            console.log("WebSocket connection opened.");
+            appendMessage("Connected to the server.");
+        };
+
+        // Khi nhận được tin nhắn từ server
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const senderId = data.senderId;
+            const message = data.message;
+            appendMessage(`${senderId}: ${message}`);
+        };
+
+        // Khi kết nối bị đóng
+        socket.onclose = function(event) {
+            console.log("WebSocket connection closed.");
+            appendMessage("Disconnected from the server.");
+        };
+
+        // Khi có lỗi xảy ra
+        socket.onerror = function(error) {
+            console.error("WebSocket error:", error);
+        };
+    }
+
+    // Gửi tin nhắn tới server
+    function sendMessage() {
+        const messageInput = document.getElementById("message");
+        const message = messageInput.value;
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            // Gửi tin nhắn dưới dạng JSON
+            const data = {
+                type: "message",
+                senderId: "userA",
+                message: message
+            };
+            socket.send(JSON.stringify(data));
+            appendMessage(`You: ${message}`);
+            messageInput.value = ""; // Xóa nội dung sau khi gửi
+        } else {
+            console.log("WebSocket is not open.");
+        }
+    }
+
+    // Hiển thị tin nhắn lên giao diện
+    function appendMessage(text) {
+        const chatDiv = document.getElementById("chat");
+        const messageParagraph = document.createElement("p");
+        messageParagraph.textContent = text;
+        chatDiv.appendChild(messageParagraph);
+    }
+
+    // Khởi tạo kết nối WebSocket khi tải trang
+    connectWebSocket();
+</script>
+</body>
+</html>

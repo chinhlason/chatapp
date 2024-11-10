@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' ws://localhost:2901;">
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' ws://localhost:8080;">
     <title>WebSocket Client</title>
 </head>
 <body>
@@ -21,12 +21,14 @@
 
 <script>
     // Thay đổi URL theo WebSocket server của bạn
-    const socketUrl = 'ws://localhost:2901/ws?userId=1&roomId=1';
+    const socketUrl = 'ws://localhost:8080/ws?roomId=1&userId=1';
     let socket;
 
     function connectWebSocket() {
         // Khởi tạo kết nối WebSocket
         socket = new WebSocket(socketUrl);
+
+        console.log(socket)
 
         // Khi kết nối được mở
         socket.onopen = function(event) {

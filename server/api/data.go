@@ -19,6 +19,12 @@ type Token struct {
 	Token    string `json:"token"`
 }
 
+type LoginResponse struct {
+	Id       int64  `json:"id"`
+	Username string `json:"username"`
+	Token    string `json:"token"`
+}
+
 type RegisterUserRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -46,4 +52,13 @@ type Friend struct {
 	Id            int64     `json:"id"`
 	Username      string    `json:"username"`
 	InteractionAt time.Time `json:"interaction_at"`
+}
+
+type Messages struct {
+	Id             string    `json:"id"`
+	IdSender       string    `json:"id_sender"`
+	UsernameSender string    `json:"username"`
+	IdReceiver     string    `json:"id_receiver"`
+	Content        string    `json:"content"`
+	CreateAt       time.Time `json:"create_at"`
 }

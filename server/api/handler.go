@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
@@ -80,8 +79,9 @@ func (h *Handler) Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, Response{
 		Code:    http.StatusOK,
 		Message: "Login successful",
-		Data: Token{
-			Username: req.Username,
+		Data: LoginResponse{
+			Id:       user.Id,
+			Username: user.Username,
 			Token:    token,
 		},
 	})
@@ -199,7 +199,6 @@ func (h *Handler) GetListFriends(c echo.Context) error {
 
 func (h *Handler) UpdateInteraction(c echo.Context) error {
 	idUser := c.Get("id")
-	fmt.Println(idUser)
 	idStr := idUser.(string)
 	idFr := c.Param("id")
 	err := h.s.UpdateInteraction(c.Request().Context(), idStr, idFr)
@@ -215,5 +214,88 @@ func (h *Handler) UpdateInteraction(c echo.Context) error {
 		Code:    http.StatusOK,
 		Message: "Interaction updated",
 		Data:    time.Now(),
+	})
+}
+
+func (h *Handler) GetMessages(c echo.Context) error {
+	idRoom := c.Param("id_room")
+	limit := c.QueryParam("limit")
+	page := c.QueryParam("page")
+	limitInt, _ := strconv.Atoi(limit)
+	pageInt, _ := strconv.Atoi(page)
+	offset := (pageInt - 1) * limitInt
+	idUser := c.Get("id")
+	legit, err := h.s.CheckPermissionInRoom(c.Request().Context(), idUser.(string), idRoom)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest,
+			Response{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
+			})
+	}
+	if !legit {
+		return c.JSON(http.StatusUnauthorized,
+			Response{
+				Code:    http.StatusUnauthorized,
+				Message: "You are not allowed to access this room",
+				Data:    nil,
+			})
+	}
+	messages, err := h.s.GetMessagesInRoom(c.Request().Context(), idRoom, limitInt, offset)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest,
+			Response{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
+			})
+	}
+	return c.JSON(http.StatusOK, Response{
+		Code:    http.StatusOK,
+		Message: "Messages",
+		Data:    messages,
+	})
+}
+
+func (h *Handler) GetMessagesOlder(c echo.Context) error {
+	idRoom := c.Param("id_room")
+	idOldestMessage := c.Param("id_msg")
+	limit := c.QueryParam("limit")
+	page := c.QueryParam("page")
+	limitInt, _ := strconv.Atoi(limit)
+	pageInt, _ := strconv.Atoi(page)
+	offset := (pageInt - 1) * limitInt
+	idUser := c.Get("id")
+	legit, err := h.s.CheckPermissionInRoom(c.Request().Context(), idUser.(string), idRoom)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest,
+			Response{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
+			})
+	}
+	if !legit {
+		return c.JSON(http.StatusUnauthorized,
+			Response{
+				Code:    http.StatusUnauthorized,
+				Message: "You are not allowed to access this room",
+				Data:    nil,
+			})
+	}
+	messages, err := h.s.GetMessagesOlderThanID(c.Request().Context(), idRoom, idOldestMessage, limitInt, offset)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest,
+			Response{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
+			})
+	}
+	return c.JSON(http.StatusOK, Response{
+		Code:    http.StatusOK,
+		Message: "Messages",
+		Data:    messages,
 	})
 }

@@ -129,9 +129,48 @@ func (r *Repository) GetListFriends(ctx context.Context, username string, limit,
 		"AND f.status = 'ACCEPTED' "+
 		"GROUP BY "+
 		"f.id, frd.username "+
-		"ORDER BY interaction_at DESC "+
+		"ORDER BY interaction_at DESC, f.id DESC "+
 		"LIMIT $2 OFFSET $3",
 		username, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var friends []Friend
+	for rows.Next() {
+		var friend Friend
+		err := rows.Scan(&friend.IdRoom, &friend.Id, &friend.Username, &friend.InteractionAt)
+		if err != nil {
+			return nil, err
+		}
+		friends = append(friends, friend)
+	}
+	return friends, nil
+}
+
+func (r *Repository) GetListFriendsById(ctx context.Context, id string) ([]Friend, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	rows, err := r.db.Query("SELECT "+
+		"COALESCE(MAX(r.id), 0) AS id_room, "+
+		"f.id AS id_friend, "+
+		"frd.username AS friend_username, "+
+		"COALESCE(MAX(f.interaction_at), '2021-01-01 00:00:00') AS interaction_at "+
+		"FROM "+
+		"friends f "+
+		"JOIN "+
+		"users u ON u.id = f.id_user "+
+		"JOIN users frd ON frd.id = f.id_friend "+
+		"LEFT JOIN user_in_room uir1 ON uir1.id_user = u.id "+
+		"LEFT JOIN user_in_room uir2 ON uir2.id_user = frd.id AND uir1.id_room = uir2.id_room "+
+		"LEFT JOIN rooms r ON r.id = uir1.id_room AND r.id = uir2.id_room "+
+		"WHERE "+
+		"u.id = $1 "+
+		"AND f.status = 'ACCEPTED' "+
+		"GROUP BY "+
+		"f.id, frd.username "+
+		"ORDER BY interaction_at DESC, f.id DESC ",
+		id)
 	if err != nil {
 		return nil, err
 	}
@@ -194,4 +233,81 @@ func (r *Repository) IsExistChatRoom(ctx context.Context, tx *sql.Tx, idUser1, i
 		return "", nil
 	}
 	return id, nil
+}
+
+func (r *Repository) GetMessagesInRoom(ctx context.Context, idRoom string, limit, offset int) ([]Messages, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	rows, err := r.db.Query("SELECT "+
+		"m.id, "+
+		"m.id_sender, "+
+		"u.username as username, "+
+		"m.id_receiver, "+
+		"m.content, "+
+		"m.create_at "+
+		"FROM messages m "+
+		"JOIN users u ON u.id = m.id_sender "+
+		"WHERE m.id_receiver = $1 "+
+		"ORDER BY m.id DESC "+
+		"LIMIT $2 OFFSET $3", idRoom, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var messages []Messages
+	for rows.Next() {
+		var message Messages
+		err := rows.Scan(&message.Id, &message.IdSender, &message.UsernameSender, &message.IdReceiver, &message.Content, &message.CreateAt)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, message)
+	}
+	return messages, nil
+}
+
+func (r *Repository) GetMessagesOlderThanId(ctx context.Context, idMsg, idRoom string, limit, offset int) ([]Messages, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	rows, err := r.db.Query("SELECT m.id, m.id_sender, u.username as username, m.id_receiver, m.content, m.create_at "+
+		"FROM messages m "+
+		"JOIN users u ON u.id = m.id_sender "+
+		"WHERE m.id < $1 AND m.id_receiver = $2 "+
+		"ORDER BY m.id DESC "+
+		"LIMIT $3 OFFSET $4", idMsg, idRoom, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var messages []Messages
+	for rows.Next() {
+		var message Messages
+		err := rows.Scan(&message.Id, &message.IdSender, &message.UsernameSender, &message.IdReceiver, &message.Content, &message.CreateAt)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, message)
+	}
+	return messages, nil
+}
+
+func (r *Repository) InsertMessage(ctx context.Context, idSender, idReceiver, content string, createAt time.Time) error {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_, err := r.db.Exec("INSERT INTO messages (id_sender, id_receiver, content, create_at) VALUES ($1, $2, $3, $4)", idSender, idReceiver, content, createAt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Repository) CheckPermission(ctx context.Context, idUser, idRoom string) (bool, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var id string
+	err := r.db.QueryRow("SELECT id FROM user_in_room WHERE id_user = $1 AND id_room = $2", idUser, idRoom).Scan(&id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 type Service struct {
@@ -126,8 +127,55 @@ func (s *Service) GetFriends(ctx context.Context, username string, limit, offset
 	return friends, nil
 }
 
+func (s *Service) GetFriendsById(ctx context.Context, id string) ([]Friend, error) {
+	friends, err := s.r.GetListFriendsById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return friends, nil
+}
+
 func (s *Service) UpdateInteraction(ctx context.Context, idUser, idFriend string) error {
 	err := s.r.UpdateInteraction(ctx, idUser, idFriend)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) GetMessagesInRoom(ctx context.Context, idRoom string, limit, offset int) ([]Messages, error) {
+	fmt.Println("idRoom: ", idRoom)
+	if idRoom == "0" {
+		return nil, nil
+	}
+	messages, err := s.r.GetMessagesInRoom(ctx, idRoom, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	return messages, nil
+}
+
+func (s *Service) GetMessagesOlderThanID(ctx context.Context, idRoom, idMessage string, limit, offset int) ([]Messages, error) {
+	messages, err := s.r.GetMessagesOlderThanId(ctx, idMessage, idRoom, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	return messages, nil
+}
+
+func (s *Service) CheckPermissionInRoom(ctx context.Context, idUser, idRoom string) (bool, error) {
+	if idRoom == "0" {
+		return true, nil
+	}
+	permission, err := s.r.CheckPermission(ctx, idUser, idRoom)
+	if err != nil {
+		return false, err
+	}
+	return permission, nil
+}
+
+func (s *Service) InsertMessage(ctx context.Context, idSender, idReceiver, content string, createAt time.Time) error {
+	err := s.r.InsertMessage(ctx, idSender, idReceiver, content, createAt)
 	if err != nil {
 		return err
 	}

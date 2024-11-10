@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS friends (
     interaction_at timestamp
 );
 
+INSERT INTO friends (id_user, id_friend, status) VALUES (2, 1, 'ACCEPTED');
+INSERT INTO friends (id_user, id_friend, status) VALUES (4, 1, 'ACCEPTED');
 INSERT INTO friends (id_user, id_friend, status) VALUES (1, 2, 'ACCEPTED');
 INSERT INTO friends (id_user, id_friend, status) VALUES (1, 3, 'PENDING');
 -- INSERT INTO friends (id_user, id_friend, status) VALUES (1, 4, 'PENDING');
@@ -78,6 +80,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 INSERT INTO rooms (name) VALUES ('room1');
+INSERT INTO rooms (name) VALUES ('room2');
 
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL,
@@ -98,6 +101,9 @@ CREATE TABLE IF NOT EXISTS user_in_room (
 
 INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 1, 1);
 INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (2, 1, 1);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 2, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (4, 2, 2);
+
 
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL,
@@ -107,7 +113,28 @@ CREATE TABLE IF NOT EXISTS messages (
     content TEXT
 );
 
+-- insert 20 messages
 INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message2');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message3');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message4');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message5');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message6');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message7');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message8');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message9');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message10');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message11');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message12');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message13');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message14');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message15');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message16');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 2, 1, 'first message17');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message18');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message19');
+INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-01-01 00:00:00', 1, 1, 'first message20');
+
 
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL,

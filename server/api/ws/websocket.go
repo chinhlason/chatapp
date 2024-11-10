@@ -233,7 +233,7 @@ func main() {
 	http.HandleFunc("/ws", ws.HandleConnects)
 
 	// Chạy server WebSocket
-	port := ":2901"
+	port := ":8080"
 	fmt.Printf("Server is running on port %s...", port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {

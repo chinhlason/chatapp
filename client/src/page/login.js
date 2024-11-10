@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Form, Input, Button, notification } from "antd";
 import request from "../utils/fetch";
 import {useNavigate} from "react-router-dom";
+import Cookies from "js-cookie";
 
 const LOGIN_URL = "/user/login"
 
@@ -13,9 +14,12 @@ const Login = () => {
         request
             .post(LOGIN_URL, values)
             .then((res) => {
+                const response = res.data
+                Cookies.set("token", response.data.token);
+                Cookies.set("username", response.data.username);
+                Cookies.set("id", response.data.id);
                 setTimeout(() => {
                     setLoading(false);
-                    console.log(res)
                     nav('/chat')
                     notification.success({
                         message: "Login success!",
