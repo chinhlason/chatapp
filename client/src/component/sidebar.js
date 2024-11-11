@@ -11,7 +11,7 @@ const GET_LIST_FRIENDS_URL = (page, limit) => `/api/user/list-friends?page=${pag
 
 const SidebarComponent = ({onSelectFriend}) => {
     const id = Cookies.get('id');
-    const WEBSOCKET_URL = `ws://localhost:8080/ws/notification?roomId=NOTIFICATION&userId=${id}`;
+    const WEBSOCKET_URL = `ws://localhost:8080/ws/notification?userId=${id}`;
     const nav = useNavigate();
     const [friends, setFriends] = useState([]);
     const [page, setPage] = useState(1);
@@ -37,7 +37,7 @@ const SidebarComponent = ({onSelectFriend}) => {
 
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            console.log("WebSocket message 2", message);
+            console.log("WebSocket message notification received", message);
         };
 
         ws.onerror = (error) => {

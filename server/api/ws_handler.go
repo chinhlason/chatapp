@@ -142,11 +142,21 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 		Conn:   conn,
 	}
 	for _, friend := range friends {
+		idRoomNoti := fmt.Sprintf("%s_%s", NOTIFICATION_KEY, friend.IdRoom)
+		fmt.Println("idRoomNoti: ", idRoomNoti)
 		if friend.IdRoom != "0" {
-			ws.addClientToRoom(friend.IdRoom, client)
+			ws.addClientToRoom(idRoomNoti, client)
 		}
 	}
-	defer ws.removeClientFromRoom(NOTIFICATION_KEY, userId)
+
+	defer func() {
+		for _, friend := range friends {
+			idRoomNoti := fmt.Sprintf("%s_%s", NOTIFICATION_KEY, friend.IdRoom)
+			if friend.IdRoom != "0" {
+				ws.removeClientFromRoom(idRoomNoti, userId)
+			}
+		}
+	}()
 
 	// Xử lý tin nhắn
 	for {

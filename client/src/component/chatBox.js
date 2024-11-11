@@ -14,7 +14,7 @@ const GET_MESSAGES_OLDER = (idRoom, page, pivotID, limit) => `/api/messages/room
 const ChatContent = ({ idRoom, username }) => {
     const id = Cookies.get('id');
     const WEBSOCKET_URL = `ws://localhost:8080/ws?roomId=${idRoom}&userId=${id}`;
-    const WEBSOCKET_URL_NOTIFICATION = `ws://localhost:8080/ws/notification?roomId=NOTIFICATION&userId=${id}`;
+    const WEBSOCKET_URL_NOTIFICATION = `ws://localhost:8080/ws/notification?userId=${id}`;
     const [firstAccess, setFirstAccess] = useState(true);
     const [messages, setMessages] = useState([]);
     const [page, setPage] = useState(0);
@@ -32,9 +32,15 @@ const ChatContent = ({ idRoom, username }) => {
         if (!idRoom || !id) return;
         const ws = new WebSocket(WEBSOCKET_URL);
 
+        const ws2 = new WebSocket(WEBSOCKET_URL_NOTIFICATION);
+
         ws.onopen = () => {
             console.log("WebSocket connection opened");
         };
+
+        ws.onopen = () => {
+            console.log("WebSocket NOTIFICATION CHANNEL connection opened");
+        }
 
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
@@ -46,14 +52,24 @@ const ChatContent = ({ idRoom, username }) => {
             console.error("WebSocket error", error);
         };
 
+        ws2.onerror = (error) => {
+            console.error("WebSocket error", error);
+        }
+
         ws.onclose = () => {
             console.log("WebSocket connection closed");
         };
 
+        ws2.onclose = () => {
+            console.log("WebSocket NOTIFICATION CHANNEL connection closed");
+        }
+
         setSocket(ws);
+        setSocketNotification(ws2);
 
         return () => {
             ws.close();
+            ws2.close();
         };
     }, [idRoom, id]);
 
@@ -80,6 +96,7 @@ const ChatContent = ({ idRoom, username }) => {
                 if (res.data.data == null) {
                     return;
                 }
+                setMessages([]);
                 setMessages((prev) => [...prev, ...res.data.data]);
                 setPivotID(res.data.data[res.data.data.length - 1].id);
             })
@@ -102,9 +119,13 @@ const ChatContent = ({ idRoom, username }) => {
             content: newMessage,
         };
 
+        const idReceiver = 'NOTIFICATION_'+idRoom
+
+        console.log("idReceiver", idReceiver)
+
         const notification = {
             id_sender: id,
-            id_receiver: idRoom,
+            id_receiver: idReceiver,
             content: newMessage,
         }
 
@@ -116,6 +137,12 @@ const ChatContent = ({ idRoom, username }) => {
             socket.send(JSON.stringify(messageToAdd));
         } else {
             console.log("channel closed")
+        }
+
+        if (socketNotification && socketNotification.readyState === WebSocket.OPEN) {
+            socketNotification.send(JSON.stringify(notification));
+        } else {
+            console.log("channel NOTIFICATION closed")
         }
     };
 

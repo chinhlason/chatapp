@@ -22,16 +22,24 @@
 <script>
     // Thay đổi URL theo WebSocket server của bạn
     const socketUrl = 'ws://localhost:8080/ws?roomId=1&userId=2';
+    const socketUrl2 = 'ws://localhost:8080/ws/notification?userId=2';
     let socket;
 
     function connectWebSocket() {
         // Khởi tạo kết nối WebSocket
         socket = new WebSocket(socketUrl);
 
+        socket2 = new WebSocket(socketUrl2);
+
         // Khi kết nối được mở
         socket.onopen = function(event) {
             console.log("WebSocket connection opened.");
             appendMessage("Connected to the server.");
+        };
+
+        socket2.onopen = function(event) {
+            console.log("WebSocket connection noti opened.");
+            appendMessage("Connected to the noti server.");
         };
 
         // Khi nhận được tin nhắn từ server
@@ -42,14 +50,30 @@
             appendMessage(`${senderId}: ${message}`);
         };
 
+        socket2.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const senderId = data.sender_id;
+            const message = data.content;
+            appendMessage(`noti ${senderId}: ${message}`);
+        };
+
         // Khi kết nối bị đóng
         socket.onclose = function(event) {
             console.log("WebSocket connection closed.");
             appendMessage("Disconnected from the server.");
         };
 
+        socket2.onclose = function(event) {
+            console.log("WebSocket connection noti closed.");
+            appendMessage("Disconnected from the noti server.");
+        };
+
         // Khi có lỗi xảy ra
         socket.onerror = function(error) {
+            console.error("WebSocket error:", error);
+        };
+
+        socket2.onerror = function(error) {
             console.error("WebSocket error:", error);
         };
     }
@@ -63,10 +87,25 @@
             // Gửi tin nhắn dưới dạng JSON
             const data = {
                 type: "message",
-                senderId: "userA",
+                senderId: "userB",
                 message: message
             };
             socket.send(JSON.stringify(data));
+            appendMessage(`You: ${message}`);
+            messageInput.value = ""; // Xóa nội dung sau khi gửi
+        } else {
+            console.log("WebSocket is not open.");
+        }
+
+        if (socket2 && socket2.readyState === WebSocket.OPEN) {
+            // Gửi tin nhắn dưới dạng JSON
+            const data = {
+                type: "message",
+                id_sender: "2",
+                id_receiver: "NOTIFICATION_1",
+                content: message
+            };
+            socket2.send(JSON.stringify(data));
             appendMessage(`You: ${message}`);
             messageInput.value = ""; // Xóa nội dung sau khi gửi
         } else {
