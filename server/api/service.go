@@ -198,6 +198,14 @@ func (s *Service) ChangeOnlineStatus(ctx context.Context, id string, status bool
 	return nil
 }
 
+func (s *Service) GetListFriendAndMessage(ctx context.Context, username, interactAt string, limit, offset int) ([]FriendListResponse, error) {
+	friends, err := s.r.GetListFriendAndMessage(ctx, username, interactAt, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	return friends, nil
+}
+
 //func (s *Service) CreateNewChat(ctx context.Context, userId, friendId string) error {
 //
 //}

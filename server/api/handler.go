@@ -174,7 +174,6 @@ func (h *Handler) AcceptFriendRequestTest(ctx context.Context, id string) (strin
 }
 
 func (h *Handler) GetListFriends(c echo.Context) error {
-	fmt.Println(time.Now())
 	limit := c.QueryParam("limit")
 	page := c.QueryParam("page")
 	interactAt := c.QueryParam("time")
@@ -314,5 +313,35 @@ func (h *Handler) GetMessagesOlder(c echo.Context) error {
 		Code:    http.StatusOK,
 		Message: "Messages",
 		Data:    messages,
+	})
+}
+
+func (h *Handler) GetListFriendAndMessage(c echo.Context) error {
+	limit := c.QueryParam("limit")
+	page := c.QueryParam("page")
+	interactAt := c.QueryParam("time")
+	limitInt, _ := strconv.Atoi(limit)
+	pageInt, _ := strconv.Atoi(page)
+	offset := (pageInt - 1) * limitInt
+	token := c.Request().Header.Get("Authorization")
+	token = strings.TrimPrefix(token, "Bearer ")
+	username, _, _ := ValidateToken(token)
+	if interactAt == "" {
+		interactAt = time.Now().Add(time.Hour).Format("2006-01-02 15:04:05")
+	}
+	fmt.Println("interactAt: ", interactAt)
+	data, err := h.s.GetListFriendAndMessage(c.Request().Context(), username, interactAt, limitInt, offset)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest,
+			Response{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
+			})
+	}
+	return c.JSON(http.StatusOK, Response{
+		Code:    http.StatusOK,
+		Message: "List friends",
+		Data:    data,
 	})
 }

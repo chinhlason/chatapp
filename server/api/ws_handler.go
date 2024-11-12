@@ -59,10 +59,11 @@ type message struct {
 }
 
 type Notifications struct {
-	IdSender   string `json:"id_sender"`
-	IdReceiver string `json:"id_receiver"`
-	Type       string `json:"type"`
-	Content    string `json:"content"`
+	IdSender       string `json:"id_sender"`
+	UsernameSender string `json:"username_sender"`
+	IdReceiver     string `json:"id_receiver"`
+	Type           string `json:"type"`
+	Content        string `json:"content"`
 }
 
 func (ws *WebSocketServer) HandleConnects(c echo.Context) error {
@@ -201,6 +202,7 @@ func (ws *WebSocketServer) broadcastMessage(ctx context.Context, senderId, roomI
 		log.Println("room 1 not found")
 		return
 	}
+
 	for id, client := range room.Clients {
 		if id != senderId {
 			err := client.Conn.WriteMessage(websocket.TextMessage, msg)
@@ -239,10 +241,11 @@ func (ws *WebSocketServer) broadcastNotifications(idSender, idReceiver, typeMsg 
 	for _, client := range room.Clients {
 		if client.userId != idSender {
 			notification := &Notifications{
-				IdSender:   idSender,
-				IdReceiver: idReceiver,
-				Type:       typeMsg,
-				Content:    msgJson.Content,
+				IdSender:       idSender,
+				IdReceiver:     idReceiver,
+				UsernameSender: msgJson.UsernameSender,
+				Type:           typeMsg,
+				Content:        msgJson.Content,
 			}
 			data, err := json.Marshal(notification)
 			if err != nil {

@@ -55,6 +55,16 @@ type Friend struct {
 	InteractionAt time.Time `json:"interaction_at"`
 }
 
+type FriendListResponse struct {
+	IdRoom        string `json:"id_room"`
+	IdMessage     string `json:"id_message"`
+	IsOnline      bool   `json:"is_online"`
+	Username      string `json:"friend_username"`
+	Id            int64  `json:"id_friend"`
+	IsRead        bool   `json:"is_read"`
+	InteractionAt string `json:"interaction_at"`
+}
+
 type Messages struct {
 	Id             string    `json:"id"`
 	IdSender       string    `json:"id_sender"`

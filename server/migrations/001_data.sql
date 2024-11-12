@@ -38,20 +38,19 @@ INSERT INTO users (username, password, is_online) VALUES ('friend19', 'friend19'
 INSERT INTO users (username, password, is_online) VALUES ('friend20', 'friend20', false);
 
 CREATE TABLE IF NOT EXISTS friends (
-                                       id SERIAL,
-                                       id_user INT REFERENCES users(id),
+    id SERIAL,
+    id_user INT REFERENCES users(id),
     id_friend INT REFERENCES users(id),
     status varchar(20),
     interaction_at timestamp
     );
 
-INSERT INTO friends (id_user, id_friend, status) VALUES (2, 1, 'ACCEPTED');
-INSERT INTO friends (id_user, id_friend, status) VALUES (4, 1, 'ACCEPTED');
-INSERT INTO friends (id_user, id_friend, status) VALUES (1, 2, 'ACCEPTED');
-INSERT INTO friends (id_user, id_friend, status) VALUES (1, 3, 'PENDING');
--- INSERT INTO friends (id_user, id_friend, status) VALUES (1, 4, 'PENDING');
-INSERT INTO friends (id_user, id_friend, status) VALUES (1, 5, 'PENDING');
-INSERT INTO friends (id_user, id_friend, status) VALUES (1, 6, 'PENDING');
+INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (2, 1, 'ACCEPTED', '2021-01-01 00:00:00');
+INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (4, 1, 'ACCEPTED', '2021-01-01 00:00:00');
+INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 2, 'ACCEPTED', '2021-01-01 00:00:00');
+INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 3, 'PENDING', '2021-01-01 00:00:00');
+INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 5, 'PENDING', '2021-01-01 00:00:00');
+INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 6, 'PENDING', '2021-01-01 00:00:00');
 INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 4, 'ACCEPTED', '2021-01-01 00:00:00');
 INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 7, 'ACCEPTED', '2021-01-01 00:00:00');
 INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 8, 'ACCEPTED', '2021-01-01 00:00:00');
