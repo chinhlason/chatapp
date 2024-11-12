@@ -17,6 +17,7 @@ var (
 	NOTIFICATION_KEY            = "NOTIFICATION"
 	FRIEND_REQUEST_NOTIFICATION = "FRIEND_REQUEST_NOTIFICATION"
 	MESSAGE_NOTIFICATION        = "MESSAGE_NOTIFICATION"
+	ONLINE_NOTIFICATION         = "ONLINE_NOTIFICATION"
 )
 
 type Client struct {
@@ -115,6 +116,8 @@ func (ws *WebSocketServer) HandleConnectMsgNotificationServer(c echo.Context) er
 		return errors.New("userId is empty")
 	}
 
+	_ = ws.svc.ChangeOnlineStatus(c.Request().Context(), userId, true)
+
 	// Lấy danh sách bạn bè
 	friends, err := ws.svc.GetFriendsById(c.Request().Context(), userId)
 	if err != nil {
@@ -143,13 +146,13 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 	}
 	for _, friend := range friends {
 		idRoomNoti := fmt.Sprintf("%s_%s", NOTIFICATION_KEY, friend.IdRoom)
-		fmt.Println("idRoomNoti: ", idRoomNoti)
 		if friend.IdRoom != "0" {
 			ws.addClientToRoom(idRoomNoti, client)
 		}
 	}
 
 	defer func() {
+		_ = ws.svc.ChangeOnlineStatus(context.Background(), userId, false)
 		for _, friend := range friends {
 			idRoomNoti := fmt.Sprintf("%s_%s", NOTIFICATION_KEY, friend.IdRoom)
 			if friend.IdRoom != "0" {
@@ -172,7 +175,7 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 			continue
 		}
 
-		ws.broadcastNotifications(userId, notification.IdReceiver, MESSAGE_NOTIFICATION, msg)
+		ws.broadcastNotifications(userId, notification.IdReceiver, notification.Type, msg)
 	}
 }
 

@@ -127,6 +127,14 @@ func (s *Service) GetFriends(ctx context.Context, username string, limit, offset
 	return friends, nil
 }
 
+func (s *Service) GetFriendsAfterTimestamp(ctx context.Context, username string, interactAt string, limit, offset int) ([]Friend, error) {
+	friends, err := s.r.GetListFriendsAfterTimestamp(ctx, username, interactAt, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	return friends, nil
+}
+
 func (s *Service) GetFriendsById(ctx context.Context, id string) ([]Friend, error) {
 	friends, err := s.r.GetListFriendsById(ctx, id)
 	if err != nil {
@@ -175,7 +183,15 @@ func (s *Service) CheckPermissionInRoom(ctx context.Context, idUser, idRoom stri
 }
 
 func (s *Service) InsertMessage(ctx context.Context, idSender, idReceiver, content string, createAt time.Time) error {
-	err := s.r.InsertMessage(ctx, idSender, idReceiver, content, createAt)
+	err := s.r.InsertMessageWithReadState(ctx, idSender, idReceiver, content, createAt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) ChangeOnlineStatus(ctx context.Context, id string, status bool) error {
+	err := s.r.ChangeOnlineStatus(ctx, id, status)
 	if err != nil {
 		return err
 	}

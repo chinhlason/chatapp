@@ -42,7 +42,7 @@ func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*U
 	_, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	var user User
-	err := r.db.QueryRow("SELECT * FROM users WHERE username = $1", username).
+	err := r.db.QueryRow("SELECT users.id, users.username, users.password FROM users WHERE username = $1", username).
 		Scan(&user.Id, &user.Username, &user.Password)
 	if err != nil {
 		return &User{}, err
@@ -115,6 +115,7 @@ func (r *Repository) GetListFriends(ctx context.Context, username string, limit,
 		"COALESCE(MAX(r.id), 0) AS id_room, "+
 		"f.id AS id_friend, "+
 		"frd.username AS friend_username, "+
+		"frd.is_online AS is_online, "+
 		"COALESCE(MAX(f.interaction_at), '2021-01-01 00:00:00') AS interaction_at "+
 		"FROM "+
 		"friends f "+
@@ -128,7 +129,7 @@ func (r *Repository) GetListFriends(ctx context.Context, username string, limit,
 		"u.username = $1 "+
 		"AND f.status = 'ACCEPTED' "+
 		"GROUP BY "+
-		"f.id, frd.username "+
+		"f.id, frd.username, frd.is_online "+
 		"ORDER BY interaction_at DESC, f.id DESC "+
 		"LIMIT $2 OFFSET $3",
 		username, limit, offset)
@@ -139,7 +140,49 @@ func (r *Repository) GetListFriends(ctx context.Context, username string, limit,
 	var friends []Friend
 	for rows.Next() {
 		var friend Friend
-		err := rows.Scan(&friend.IdRoom, &friend.Id, &friend.Username, &friend.InteractionAt)
+		err := rows.Scan(&friend.IdRoom, &friend.Id, &friend.Username, &friend.IsOnline, &friend.InteractionAt)
+		if err != nil {
+			return nil, err
+		}
+		friends = append(friends, friend)
+	}
+	return friends, nil
+}
+
+func (r *Repository) GetListFriendsAfterTimestamp(ctx context.Context, username string, interactAt string, limit, offset int) ([]Friend, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	rows, err := r.db.Query("SELECT "+
+		"COALESCE(MAX(r.id), 0) AS id_room, "+
+		"f.id AS id_friend, "+
+		"frd.username AS friend_username, "+
+		"frd.is_online AS is_online, "+
+		"COALESCE(MAX(f.interaction_at), '2021-01-01 00:00:00') AS interaction_at "+
+		"FROM "+
+		"friends f "+
+		"JOIN "+
+		"users u ON u.id = f.id_user "+
+		"JOIN users frd ON frd.id = f.id_friend "+
+		"LEFT JOIN user_in_room uir1 ON uir1.id_user = u.id "+
+		"LEFT JOIN user_in_room uir2 ON uir2.id_user = frd.id AND uir1.id_room = uir2.id_room "+
+		"LEFT JOIN rooms r ON r.id = uir1.id_room AND r.id = uir2.id_room "+
+		"WHERE "+
+		"u.username = $1 "+
+		"AND f.status = 'ACCEPTED' "+
+		"AND f.interaction_at < $2 "+
+		"GROUP BY "+
+		"f.id, frd.username, frd.is_online "+
+		"ORDER BY interaction_at DESC, f.id DESC "+
+		"LIMIT $3 OFFSET $4",
+		username, interactAt, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var friends []Friend
+	for rows.Next() {
+		var friend Friend
+		err := rows.Scan(&friend.IdRoom, &friend.Id, &friend.Username, &friend.IsOnline, &friend.InteractionAt)
 		if err != nil {
 			return nil, err
 		}
@@ -291,14 +334,28 @@ func (r *Repository) GetMessagesOlderThanId(ctx context.Context, idMsg, idRoom s
 	return messages, nil
 }
 
-func (r *Repository) InsertMessage(ctx context.Context, idSender, idReceiver, content string, createAt time.Time) error {
+func (r *Repository) InsertMessage(ctx context.Context, idSender, idReceiver, content string, createAt time.Time) (string, error) {
 	_, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := r.db.Exec("INSERT INTO messages (id_sender, id_receiver, content, create_at) VALUES ($1, $2, $3, $4)", idSender, idReceiver, content, createAt)
+	var id string
+	err := r.db.QueryRow("INSERT INTO messages (id_sender, id_receiver, content, create_at) VALUES ($1, $2, $3, $4) RETURNING id",
+		idSender, idReceiver, content, createAt).Scan(&id)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return id, nil
+}
+
+func (r *Repository) InsertMessageIntoRoom(ctx context.Context, idSender, idReceiver, content string, createAt time.Time) (string, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var id string
+	err := r.db.QueryRow("INSERT INTO messages (id_sender, id_receiver, content, create_at) VALUES ($1, $2, $3, $4) RETURNING id",
+		idSender, idReceiver, content, createAt).Scan(&id)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
 func (r *Repository) CheckPermission(ctx context.Context, idUser, idRoom string) (bool, error) {
@@ -311,3 +368,90 @@ func (r *Repository) CheckPermission(ctx context.Context, idUser, idRoom string)
 	}
 	return true, nil
 }
+
+func (r *Repository) ChangeOnlineStatus(ctx context.Context, id string, status bool) error {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_, err := r.db.Exec("UPDATE users SET is_online = $1 WHERE id = $2", status, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Repository) InsertMessageWithReadState(ctx context.Context, idSender, idRoom, content string, createAt time.Time) error {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(
+		"WITH new_message AS ( "+
+			"INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ($4, $1, $2, $3) "+
+			"RETURNING id AS message_id) "+
+			"INSERT INTO message_read_status (id_message, id_receiver, is_read, read_at) "+
+			"SELECT "+
+			"new_message.message_id, "+
+			"user_in_room.id_user, "+
+			"CASE WHEN user_in_room.id_user = $1 THEN TRUE ELSE FALSE END AS is_read, "+
+			"$4 "+
+			"FROM new_message "+
+			"JOIN user_in_room ON user_in_room.id_room = $2",
+		idSender, idRoom, content, createAt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//func (r *Repository)
+//WITH friends_with_room AS (
+//SELECT
+//COALESCE(MAX(r.id), 0) AS id_room,
+//u.id AS id_user,
+//f.id AS id_friend,
+//frd.username AS friend_username,
+//frd.is_online AS is_online,
+//COALESCE(MAX(f.interaction_at), '2021-01-01 00:00:00') AS interaction_at
+//FROM
+//friends f
+//JOIN
+//users u ON u.id = f.id_user
+//JOIN
+//users frd ON frd.id = f.id_friend
+//LEFT JOIN
+//user_in_room uir1 ON uir1.id_user = u.id
+//LEFT JOIN
+//user_in_room uir2 ON uir2.id_user = frd.id AND uir1.id_room = uir2.id_room
+//LEFT JOIN
+//rooms r ON r.id = uir1.id_room AND r.id = uir2.id_room
+//WHERE
+//u.username = 'user2'
+//AND f.status = 'ACCEPTED'
+//GROUP BY
+//f.id, frd.username, frd.is_online, u.id
+//ORDER BY
+//interaction_at DESC
+//LIMIT
+//200 OFFSET 0
+//)
+//SELECT
+//fwr.id_room,
+//m.id AS id_message,
+//fwr.id_user,
+//fwr.friend_username,
+//fwr.id_friend,
+//COALESCE(m.is_read, TRUE) AS is_read
+//FROM
+//friends_with_room fwr
+//LEFT JOIN LATERAL (
+//SELECT
+//m.id,
+//mrs.is_read
+//FROM
+//messages m
+//LEFT JOIN
+//message_read_status mrs ON mrs.id_message = m.id AND mrs.id_receiver = fwr.id_user
+//WHERE
+//m.id_receiver = fwr.id_room
+//ORDER BY
+//m.id DESC
+//LIMIT 1
+//) AS m ON TRUE;

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
@@ -173,22 +174,38 @@ func (h *Handler) AcceptFriendRequestTest(ctx context.Context, id string) (strin
 }
 
 func (h *Handler) GetListFriends(c echo.Context) error {
+	fmt.Println(time.Now())
 	limit := c.QueryParam("limit")
 	page := c.QueryParam("page")
+	interactAt := c.QueryParam("time")
 	limitInt, _ := strconv.Atoi(limit)
 	pageInt, _ := strconv.Atoi(page)
 	offset := (pageInt - 1) * limitInt
 	token := c.Request().Header.Get("Authorization")
 	token = strings.TrimPrefix(token, "Bearer ")
 	username, _, _ := ValidateToken(token)
-	data, err := h.s.GetFriends(c.Request().Context(), username, limitInt, offset)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest,
-			Response{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-				Data:    nil,
-			})
+	var data []Friend
+	var err error
+	if interactAt != "" {
+		data, err = h.s.GetFriendsAfterTimestamp(c.Request().Context(), username, interactAt, limitInt, offset)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest,
+				Response{
+					Code:    http.StatusBadRequest,
+					Message: err.Error(),
+					Data:    nil,
+				})
+		}
+	} else {
+		data, err = h.s.GetFriends(c.Request().Context(), username, limitInt, offset)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest,
+				Response{
+					Code:    http.StatusBadRequest,
+					Message: err.Error(),
+					Data:    nil,
+				})
+		}
 	}
 	return c.JSON(http.StatusOK, Response{
 		Code:    http.StatusOK,

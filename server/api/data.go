@@ -51,6 +51,7 @@ type Friend struct {
 	IdRoom        string    `json:"id_room"`
 	Id            int64     `json:"id"`
 	Username      string    `json:"username"`
+	IsOnline      bool      `json:"is_online"`
 	InteractionAt time.Time `json:"interaction_at"`
 }
 
