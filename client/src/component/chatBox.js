@@ -13,6 +13,7 @@ const GET_MESSAGES_OLDER = (idRoom, page, pivotID, limit) => `/api/messages/room
 
 const ChatContent = ({ idRoom, username }) => {
     const id = Cookies.get('id');
+    const usernameCurr = Cookies.get('username');
     const WEBSOCKET_URL = `ws://localhost:8080/ws?roomId=${idRoom}&userId=${id}`;
     const WEBSOCKET_URL_NOTIFICATION = `ws://localhost:8080/ws/notification?userId=${id}`;
     const [firstAccess, setFirstAccess] = useState(true);
@@ -120,12 +121,10 @@ const ChatContent = ({ idRoom, username }) => {
         };
 
         const idReceiver = 'NOTIFICATION_'+idRoom
-
-        console.log("idReceiver", idReceiver)
-
         const notification = {
             id_sender: id,
             id_receiver: idReceiver,
+            username_sender: usernameCurr,
             content: newMessage,
         }
 

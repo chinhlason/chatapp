@@ -38,6 +38,33 @@ const SidebarComponent = ({onSelectFriend}) => {
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
             console.log("WebSocket message notification received", message);
+            const idSender = message.id_sender;
+
+            //id_receiver : NOTIFICATION_1, trim only get 1
+            const idReceiver = message.id_receiver.split('_')[1];
+
+            const newFriend = {
+                id: idSender,
+                id_room: idReceiver,
+                interaction_at: null,
+                is_online: true,
+                username: message.username_sender,
+            };
+
+            setFriends((prevFriends) => {
+                // Tìm chỉ số của phần tử có id là idSender
+                const existingIndex = prevFriends.findIndex(friend => friend.id === idSender);
+
+                // Nếu phần tử đã tồn tại, đưa nó lên đầu mảng
+                if (existingIndex !== -1) {
+                    const updatedFriends = [...prevFriends];
+                    const [existingFriend] = updatedFriends.splice(existingIndex, 1); // Loại bỏ phần tử hiện có
+                    return [existingFriend, ...updatedFriends]; // Thêm phần tử vào đầu mảng
+                }
+
+                // Nếu không tồn tại, thêm phần tử mới vào đầu mảng
+                return [newFriend, ...prevFriends];
+            });
         };
 
         ws.onerror = (error) => {
@@ -87,7 +114,7 @@ const SidebarComponent = ({onSelectFriend}) => {
     }
 
     return (
-        <Sider width={350} style={{backgroundColor: '#600080', color: 'fff'}}>
+        <Sider width={200} style={{backgroundColor: '#600080', color: 'fff'}}>
             <div style={{padding: '10px'}}>
                 <Input
                     placeholder="Search"
