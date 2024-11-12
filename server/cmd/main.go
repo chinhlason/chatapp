@@ -58,7 +58,10 @@ func main() {
 	c.POST("/user/friend-request/accepted/:id", handler.AcceptFriendRequest)
 	c.GET("/messages/room/:id_room", handler.GetMessages)
 	c.GET("/messages/room/:id_room/:id_msg", handler.GetMessagesOlder)
+	c.GET("/friend/list", handler.GetListFriendAndMessage)
+
 	e.GET("/ws", ws.HandleConnects)
 	e.GET("/ws/notification", ws.HandleConnectMsgNotificationServer)
+
 	e.Logger.Fatal(e.Start(port))
 }
