@@ -15,7 +15,7 @@ const ChatContent = ({ idRoom, username }) => {
     const id = Cookies.get('id');
     const usernameCurr = Cookies.get('username');
     const WEBSOCKET_URL = `ws://localhost:8080/ws?roomId=${idRoom}&userId=${id}`;
-    const WEBSOCKET_URL_NOTIFICATION = `ws://localhost:8080/ws/notification?userId=${id}`;
+    const WEBSOCKET_URL_NOTIFICATION = `ws://localhost:8080/ws/notification?userId=${id}&username=${usernameCurr}`;
     const [firstAccess, setFirstAccess] = useState(true);
     const [messages, setMessages] = useState([]);
     const [page, setPage] = useState(0);

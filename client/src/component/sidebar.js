@@ -1,24 +1,27 @@
 import React, {useEffect, useState} from "react";
 import request from "../utils/fetch";
-import {Avatar, Input, List, Spin} from "antd";
+import {Avatar, Badge, Input, List, Spin} from "antd";
 import {SearchOutlined, UserOutlined} from "@ant-design/icons";
 import Sider from "antd/es/layout/Sider";
 import LoadingIcon from "antd/lib/button/LoadingIcon";
 import {useNavigate} from "react-router-dom";
 import Cookies from "js-cookie";
 
-const GET_LIST_FRIENDS_URL = (page, limit) => `/api/user/list-friends?page=${page}&limit=${limit}`
+const GET_LIST_FRIENDS_URL = (page, limit, pivot) => `/api/friend/list?page=${page}&limit=${limit}&time=${pivot}`
 
 const SidebarComponent = ({onSelectFriend}) => {
     const id = Cookies.get('id');
-    const WEBSOCKET_URL = `ws://localhost:8080/ws/notification?userId=${id}`;
+    const username = Cookies.get('username');
+    const WEBSOCKET_URL = `ws://localhost:8080/ws/notification?userId=${id}&username=${username}`;
     const nav = useNavigate();
     const [friends, setFriends] = useState([]);
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState(0);
     const [isLastPage, setIsLastPage] = useState(false);
     const [loading, setLoading] = useState(false);
     const [selectedId, setSelectedId] = useState(null);
     const [socket, setSocket] = useState(null);
+    const [onlineState, setOnlineState] = useState(false);
+    const [pivot, setPivot] = useState("");
 
     const handleSelectFriend = (id, username, idRoom) => {
         setSelectedId(id);
@@ -43,29 +46,44 @@ const SidebarComponent = ({onSelectFriend}) => {
             //id_receiver : NOTIFICATION_1, trim only get 1
             const idReceiver = message.id_receiver.split('_')[1];
 
-            const newFriend = {
-                id: idSender,
-                id_room: idReceiver,
-                interaction_at: null,
-                is_online: true,
-                username: message.username_sender,
-            };
+            if (message.type === 'ONLINE_NOTIFICATION') {
+                setFriends((prevFriends) => {
+                    return prevFriends.map((friend) => {
+                        if (friend.id_friend == idSender) {
+                            return {
+                                ...friend,
+                                is_online: message.content === 'online',
+                            };
+                        }
+                        return friend;
+                    });
+                });
+            }
 
-            setFriends((prevFriends) => {
-                // Tìm chỉ số của phần tử có id là idSender
-                const existingIndex = prevFriends.findIndex(friend => friend.id === idSender);
+            else {
+                const newFriend = {
+                    friend_username: message.username_sender,
+                    id_friend: idSender,
+                    id_room: idReceiver,
+                    interaction_at: new Date().toISOString(),
+                    is_online: true,
+                    is_read: false,
+                };
 
-                // Nếu phần tử đã tồn tại, đưa nó lên đầu mảng
-                if (existingIndex !== -1) {
-                    const updatedFriends = [...prevFriends];
-                    const [existingFriend] = updatedFriends.splice(existingIndex, 1); // Loại bỏ phần tử hiện có
-                    return [existingFriend, ...updatedFriends]; // Thêm phần tử vào đầu mảng
-                }
+                setFriends((prevFriends) => {
+                    const existingIndex = prevFriends.findIndex(friend => friend.id_friend == idSender);
+                    if (existingIndex !== -1) {
+                        const updatedFriends = [...prevFriends];
+                        const [existingFriend] = updatedFriends.splice(existingIndex, 1);
+                        return [existingFriend, ...updatedFriends];
+                    } else if (existingIndex === 0) {
+                        return [prevFriends];
+                    }
+                    return [newFriend, ...prevFriends];
+                });
+            }
+        }
 
-                // Nếu không tồn tại, thêm phần tử mới vào đầu mảng
-                return [newFriend, ...prevFriends];
-            });
-        };
 
         ws.onerror = (error) => {
             console.error("WebSocket error", error);
@@ -82,17 +100,37 @@ const SidebarComponent = ({onSelectFriend}) => {
         };
     }, [id]);
 
+    useEffect(() => {
+        setLoading(true);
+        request
+            .get(GET_LIST_FRIENDS_URL(1, 10, pivot))
+            .then((res) => {
+                if (res.data.data == null) {
+                    setIsLastPage(true);
+                    return;
+                }
+                setFriends(res.data.data);
+                setPivot(res.data.data[res.data.data.length - 1].interaction_at);
+            })
+            .catch((error) => {
+                console.log(error);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    }, []);
 
     const loadFriends = (page) => {
         setLoading(true);
         request
-            .get(GET_LIST_FRIENDS_URL(page, 10))
+            .get(GET_LIST_FRIENDS_URL(page, 10, pivot))
             .then((res) => {
                 if (res.data.data == null) {
                     setIsLastPage(true);
                     return;
                 }
                 setFriends((prev) => [...prev, ...res.data.data]);
+                setPivot(res.data.data[res.data.data.length - 1].interaction_at);
             })
             .catch((error) => {
                 console.log(error);
@@ -103,7 +141,9 @@ const SidebarComponent = ({onSelectFriend}) => {
     }
 
     useEffect(() => {
-        loadFriends(page);
+        if (page >= 1) {
+            loadFriends(page);
+        }
     }, [page]);
 
     const handleScroll = (e) => {
@@ -146,8 +186,15 @@ const SidebarComponent = ({onSelectFriend}) => {
                         >
                             <List.Item.Meta
                                 style={{display: 'flex', alignItems: 'center', paddingLeft: '10px'}}
-                                avatar={<Avatar icon={<UserOutlined />} />}
-                                title={item.username}
+                                avatar={<Badge
+                                    color={item.is_online ? 'green' : 'gray'}
+                                    dot
+                                    offset={[-2, 25]}
+                                >
+                                    <Avatar icon={<UserOutlined />} />
+                                </Badge>}
+                                // avatar={<Avatar icon={<UserOutlined />} />}
+                                title={item.friend_username}
                                 description="Description"
                             />
                         </List.Item>

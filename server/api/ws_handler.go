@@ -111,6 +111,7 @@ func (ws *WebSocketServer) handleRoomConnection(conn *websocket.Conn, roomId, us
 
 func (ws *WebSocketServer) HandleConnectMsgNotificationServer(c echo.Context) error {
 	userId := c.QueryParam("userId")
+	userName := c.QueryParam("username")
 
 	// Kiểm tra id người dùng
 	if userId == "" {
@@ -133,13 +134,11 @@ func (ws *WebSocketServer) HandleConnectMsgNotificationServer(c echo.Context) er
 	}
 
 	// Xử lý logic WebSocket trong hàm riêng
-	go ws.handleNotificationConnection(conn, userId, friends)
+	go ws.handleNotificationConnection(conn, userId, userName, friends)
 	return nil
 }
 
-func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, userId string, friends []Friend) {
-	defer conn.Close()
-
+func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, userId, userName string, friends []Friend) {
 	// Thêm client vào các phòng
 	client := &Client{
 		userId: userId,
@@ -153,14 +152,59 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 	}
 
 	defer func() {
+		fmt.Println("vao day")
 		_ = ws.svc.ChangeOnlineStatus(context.Background(), userId, false)
 		for _, friend := range friends {
 			idRoomNoti := fmt.Sprintf("%s_%s", NOTIFICATION_KEY, friend.IdRoom)
 			if friend.IdRoom != "0" {
+				room, ok := chatRooms[idRoomNoti]
+				if !ok {
+					continue
+				}
+
+				notification := &Notifications{
+					IdSender:       userId,
+					UsernameSender: userName,
+					IdReceiver:     idRoomNoti,
+					Type:           ONLINE_NOTIFICATION,
+					Content:        "offline",
+				}
+				for id, client := range room.Clients {
+					if id != userId {
+						data, err := json.Marshal(notification)
+						if err != nil {
+							log.Println("error while marshalling notification: ", err)
+						}
+						err = client.Conn.WriteMessage(websocket.TextMessage, data)
+					}
+				}
 				ws.removeClientFromRoom(idRoomNoti, userId)
 			}
 		}
 	}()
+
+	//gui thong bao online den toan bo ban be
+	for _, friend := range friends {
+		idRoomNoti := fmt.Sprintf("%s_%s", NOTIFICATION_KEY, friend.IdRoom)
+		if friend.IdRoom != "0" {
+			notification := &Notifications{
+				IdSender:       userId,
+				UsernameSender: userName,
+				IdReceiver:     idRoomNoti,
+				Type:           ONLINE_NOTIFICATION,
+				Content:        "online",
+			}
+			for id, client := range chatRooms[idRoomNoti].Clients {
+				if id != userId {
+					data, err := json.Marshal(notification)
+					if err != nil {
+						log.Println("error while marshalling notification: ", err)
+					}
+					err = client.Conn.WriteMessage(websocket.TextMessage, data)
+				}
+			}
+		}
+	}
 
 	// Xử lý tin nhắn
 	for {
@@ -178,6 +222,7 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 
 		ws.broadcastNotifications(userId, notification.IdReceiver, notification.Type, msg)
 	}
+	defer conn.Close()
 }
 
 func (ws *WebSocketServer) addClientToRoom(roomId string, client *Client) {

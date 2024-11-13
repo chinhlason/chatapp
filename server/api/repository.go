@@ -409,7 +409,7 @@ func (r *Repository) GetListFriendAndMessage(ctx context.Context, username, inte
 			"(SELECT "+
 			"COALESCE(MAX(r.id), 0) AS id_room, "+
 			"u.id AS id_user, "+
-			"f.id AS id_friend, "+
+			"frd.id AS id_friend, "+
 			"frd.username AS friend_username, "+
 			"frd.is_online AS is_online, "+
 			"COALESCE(MAX(r.interaction_at), '2021-01-01 00:00:00') AS interaction_at "+
@@ -430,10 +430,10 @@ func (r *Repository) GetListFriendAndMessage(ctx context.Context, username, inte
 			"AND f.status = 'ACCEPTED' "+
 			"and r.interaction_at < $2 "+
 			"GROUP BY "+
-			"f.id, frd.username, frd.is_online, u.id "+
+			"frd.id, frd.username, frd.is_online, u.id "+
 			"ORDER BY "+
 			"interaction_at DESC "+
-			"LIMIT $3 OFFSET $4) "+
+			"LIMIT $3 OFFSET 0) "+
 			"SELECT "+
 			"fwr.id_room, m.content AS content_newest_msg, fwr.friend_username, fwr.id_friend, fwr.is_online, "+
 			"COALESCE(m.is_read, TRUE) AS is_read, fwr.interaction_at "+
@@ -445,7 +445,7 @@ func (r *Repository) GetListFriendAndMessage(ctx context.Context, username, inte
 			"WHERE "+
 			"m.id_receiver = fwr.id_room "+
 			"ORDER BY m.id DESC LIMIT 1) AS m ON TRUE",
-		username, interactionAt, limit, offset)
+		username, interactionAt, limit)
 	if err != nil {
 		return nil, err
 	}

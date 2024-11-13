@@ -327,7 +327,7 @@ func (h *Handler) GetListFriendAndMessage(c echo.Context) error {
 	if interactAt == "" {
 		interactAt = time.Now().Add(time.Hour).Format("2006-01-02 15:04:05")
 	}
-	fmt.Println("interactAt: ", interactAt)
+	fmt.Println(interactAt, username)
 	data, err := h.s.GetListFriendAndMessage(c.Request().Context(), username, interactAt, limitInt, offset)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest,
