@@ -143,20 +143,19 @@ func (s *Service) GetFriendsById(ctx context.Context, id string) ([]Friend, erro
 	return friends, nil
 }
 
-func (s *Service) UpdateInteraction(ctx context.Context, idUser, idFriend string) error {
-	err := s.r.UpdateInteraction(ctx, idUser, idFriend)
+func (s *Service) UpdateInteraction(ctx context.Context, idRoom string) error {
+	err := s.r.UpdateInteraction(ctx, idRoom)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Service) GetMessagesInRoom(ctx context.Context, idRoom string, limit, offset int) ([]Messages, error) {
-	fmt.Println("idRoom: ", idRoom)
+func (s *Service) GetMessagesInRoom(ctx context.Context, idRoom string, limit, offset int) ([]MessagesInRoom, error) {
 	if idRoom == "0" {
 		return nil, nil
 	}
-	messages, err := s.r.GetMessagesInRoom(ctx, idRoom, limit, offset)
+	messages, err := s.r.GetMessageAndReadStateInRoom(ctx, idRoom, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +205,10 @@ func (s *Service) GetListFriendAndMessage(ctx context.Context, username, interac
 	return friends, nil
 }
 
-//func (s *Service) CreateNewChat(ctx context.Context, userId, friendId string) error {
-//
-//}
+func (s *Service) ChangeReadState(ctx context.Context, idMessage string, idReceiver string, state bool) error {
+	err := s.r.ChangeMessageReadState(ctx, idMessage, idReceiver, state)
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -97,8 +97,7 @@ const ChatContent = ({ idRoom, username }) => {
                 if (res.data.data == null) {
                     return;
                 }
-                setMessages([]);
-                setMessages((prev) => [...prev, ...res.data.data]);
+                setMessages(res.data.data);
                 setPivotID(res.data.data[res.data.data.length - 1].id);
             })
             .catch((error) => {

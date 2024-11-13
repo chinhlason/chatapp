@@ -27,6 +27,12 @@
 
     function connectWebSocket() {
         // Khởi tạo kết nối WebSocket
+
+        const test =  "[{\"user_id\" : 1, \"username\" : \"user1\", \"is_read\" : false, \"read_at\" : \"2024-11-13T15:08:26.030708\"}, {\"user_id\" : 2, \"username\" : \"user2\", \"is_read\" : false, \"read_at\" : null}]" ;
+        const test2 = JSON.parse(test);
+        test2[0].is_read = true;
+        console.log(test2);
+
         socket = new WebSocket(socketUrl);
 
         socket2 = new WebSocket(socketUrl2);
@@ -39,6 +45,13 @@
 
         socket2.onopen = function(event) {
             console.log("WebSocket connection noti opened.");
+            online_msg = {
+                type: "ONLINE_NOTIFICATION",
+                id_sender: "2",
+                id_receiver: "NOTIFICATION_2",
+                content: "online"
+            };
+            socket2.send(JSON.stringify(online_msg));
             appendMessage("Connected to the noti server.");
         };
 
@@ -51,6 +64,7 @@
         };
 
         socket2.onmessage = function(event) {
+            console.log(event.data);
             const data = JSON.parse(event.data);
             const senderId = data.sender_id;
             const message = data.content;
@@ -65,6 +79,13 @@
 
         socket2.onclose = function(event) {
             console.log("WebSocket connection noti closed.");
+            online_msg = {
+                type: "OFFLINE_NOTIFICATION",
+                id_sender: "2",
+                id_receiver: "NOTIFICATION_1",
+                content: "offline"
+            };
+            socket2.send(JSON.stringify(online_msg));
             appendMessage("Disconnected from the noti server.");
         };
 
@@ -86,9 +107,11 @@
         if (socket && socket.readyState === WebSocket.OPEN) {
             // Gửi tin nhắn dưới dạng JSON
             const data = {
-                type: "message",
-                senderId: "userB",
-                message: message
+                id: Date.now().toString(),
+                id_sender: 2,
+                username: 'user2',
+                id_receiver: 1,
+                content: message,
             };
             socket.send(JSON.stringify(data));
             appendMessage(`You: ${message}`);

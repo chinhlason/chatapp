@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
-                                     id SERIAL,
-                                     username varchar(20),
+    id SERIAL,
+    username varchar(20),
     password varchar(20),
     is_online BOOLEAN DEFAULT FALSE,
     PRIMARY KEY(id)
@@ -74,17 +74,40 @@ INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 25, 
 INSERT INTO friends (id_user, id_friend, status, interaction_at) VALUES (1, 26, 'ACCEPTED', '2021-01-01 00:00:01');
 
 CREATE TABLE IF NOT EXISTS rooms (
-                                     id SERIAL,
-                                     name varchar(20),
+    id SERIAL,
+    name varchar(20),
+    interaction_at timestamp,
     PRIMARY KEY(id)
     );
 
-INSERT INTO rooms (name) VALUES ('room1');
-INSERT INTO rooms (name) VALUES ('room2');
+-- create 22 rooms
+INSERT INTO rooms (name, interaction_at) VALUES ('room1', '2021-01-01 00:00:03');
+INSERT INTO rooms (name, interaction_at) VALUES ('room2', '2021-01-01 00:00:05');
+INSERT INTO rooms (name, interaction_at) VALUES ('room3', '2021-01-01 00:00:07');
+INSERT INTO rooms (name, interaction_at) VALUES ('room4', '2021-01-01 00:00:09');
+INSERT INTO rooms (name, interaction_at) VALUES ('room5', '2021-01-01 00:00:11');
+INSERT INTO rooms (name, interaction_at) VALUES ('room6', '2021-01-01 00:00:13');
+INSERT INTO rooms (name, interaction_at) VALUES ('room7', '2021-01-01 00:00:15');
+INSERT INTO rooms (name, interaction_at) VALUES ('room8', '2021-01-01 00:00:17');
+INSERT INTO rooms (name, interaction_at) VALUES ('room9', '2021-01-01 00:00:19');
+INSERT INTO rooms (name, interaction_at) VALUES ('room10', '2021-01-01 00:00:21');
+INSERT INTO rooms (name, interaction_at) VALUES ('room11', '2021-01-01 00:00:23');
+INSERT INTO rooms (name, interaction_at) VALUES ('room12', '2021-01-01 00:00:25');
+INSERT INTO rooms (name, interaction_at) VALUES ('room13', '2021-01-01 00:00:27');
+INSERT INTO rooms (name, interaction_at) VALUES ('room14', '2021-01-01 00:00:29');
+INSERT INTO rooms (name, interaction_at) VALUES ('room15', '2021-01-01 00:00:31');
+INSERT INTO rooms (name, interaction_at) VALUES ('room16', '2021-01-01 00:00:33');
+INSERT INTO rooms (name, interaction_at) VALUES ('room17', '2021-01-01 00:00:35');
+INSERT INTO rooms (name, interaction_at) VALUES ('room18', '2021-01-01 00:00:37');
+INSERT INTO rooms (name, interaction_at) VALUES ('room19', '2021-01-01 00:00:39');
+INSERT INTO rooms (name, interaction_at) VALUES ('room20', '2021-01-01 00:00:41');
+INSERT INTO rooms (name, interaction_at) VALUES ('room21', '2021-01-01 00:00:43');
+INSERT INTO rooms (name, interaction_at) VALUES ('room22', '2021-01-01 00:00:45');
+
 
 CREATE TABLE IF NOT EXISTS roles (
-                                     id SERIAL,
-                                     name varchar(20),
+    id SERIAL,
+    name varchar(20),
     PRIMARY KEY(id)
     );
 
@@ -92,8 +115,8 @@ INSERT INTO roles (name) VALUES ('OWNER');
 INSERT INTO roles (name) VALUES ('MEMBER');
 
 CREATE TABLE IF NOT EXISTS user_in_room (
-                                            id SERIAL,
-                                            id_user INT REFERENCES users(id),
+    id SERIAL,
+    id_user INT REFERENCES users(id),
     id_room INT REFERENCES rooms(id),
     id_role INT REFERENCES roles(id),
     PRIMARY KEY(id)
@@ -103,18 +126,57 @@ INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 1, 1);
 INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (2, 1, 1);
 INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 2, 2);
 INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (4, 2, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 3, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 4, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 5, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 6, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 7, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 8, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 9, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 10, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 11, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 12, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 13, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 14, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 15, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 16, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 17, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 18, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 19, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 20, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 21, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (1, 22, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (8, 3, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (9, 4, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (10, 5, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (11, 6, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (12, 7, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (13, 8, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (14, 9, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (15, 10, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (16, 11, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (17, 12, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (18, 13, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (19, 14, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (20, 15, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (21, 16, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (22, 17, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (23, 18, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (24, 19, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (25, 20, 2);
+INSERT INTO user_in_room (id_user, id_room, id_role) VALUES (26, 21, 2);
 
 CREATE TABLE IF NOT EXISTS messages (
-                                        id SERIAL,
-                                        create_at timestamp,
-                                        id_sender INT REFERENCES users(id),
+    id SERIAL,
+    create_at timestamp,
+    id_sender INT REFERENCES users(id),
     id_receiver INT REFERENCES rooms(id),
     content TEXT,
     PRIMARY KEY(id)
     );
 
 CREATE TABLE IF NOT EXISTS message_read_status (
-                                                   id_message INT REFERENCES messages(id),
+    id_message INT REFERENCES messages(id),
     id_receiver INT REFERENCES users(id),
     is_read BOOLEAN,
     read_at timestamp,
@@ -146,9 +208,9 @@ INSERT INTO messages (create_at, id_sender, id_receiver, content) VALUES ('2021-
 
 
 CREATE TABLE IF NOT EXISTS notifications (
-                                             id SERIAL,
-                                             create_at timestamp,
-                                             id_sender INT REFERENCES users(id),
+    id SERIAL,
+    create_at timestamp,
+    id_sender INT REFERENCES users(id),
     id_receiver INT REFERENCES users(id),
     content TEXT
     );

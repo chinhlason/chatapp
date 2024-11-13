@@ -208,13 +208,17 @@ func (ws *WebSocketServer) broadcastMessage(ctx context.Context, senderId, roomI
 			err := client.Conn.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("error while writing message: ", err)
+				return
 			}
 		}
 	}
 
 	var msgJson message
 	err := json.Unmarshal(msg, &msgJson)
-
+	err = ws.svc.UpdateInteraction(ctx, roomId)
+	if err != nil {
+		log.Println("error while updating interaction: ", err)
+	}
 	err = ws.svc.InsertMessage(ctx, senderId, roomId, msgJson.Content, time.Now())
 	if err != nil {
 		log.Println("error while inserting message: ", err)

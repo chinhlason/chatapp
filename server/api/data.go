@@ -1,6 +1,9 @@
 package api
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 type Response struct {
 	Code    int         `json:"code"`
@@ -56,13 +59,13 @@ type Friend struct {
 }
 
 type FriendListResponse struct {
-	IdRoom        string `json:"id_room"`
-	IdMessage     string `json:"id_message"`
-	IsOnline      bool   `json:"is_online"`
-	Username      string `json:"friend_username"`
-	Id            int64  `json:"id_friend"`
-	IsRead        bool   `json:"is_read"`
-	InteractionAt string `json:"interaction_at"`
+	IdRoom        string         `json:"id_room"`
+	NewestMsg     sql.NullString `json:"content_newest_msg"`
+	IsOnline      bool           `json:"is_online"`
+	Username      string         `json:"friend_username"`
+	Id            int64          `json:"id_friend"`
+	IsRead        bool           `json:"is_read"`
+	InteractionAt string         `json:"interaction_at"`
 }
 
 type Messages struct {
@@ -70,6 +73,15 @@ type Messages struct {
 	IdSender       string    `json:"id_sender"`
 	UsernameSender string    `json:"username"`
 	IdReceiver     string    `json:"id_receiver"`
+	Content        string    `json:"content"`
+	CreateAt       time.Time `json:"create_at"`
+}
+
+type MessagesInRoom struct {
+	Id             string    `json:"message_id"`
+	IdSender       string    `json:"id_sender"`
+	UsernameSender string    `json:"username"`
+	ReadState      string    `json:"read_state"`
 	Content        string    `json:"content"`
 	CreateAt       time.Time `json:"create_at"`
 }

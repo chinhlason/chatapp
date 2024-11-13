@@ -7,7 +7,6 @@
     <title>WebSocket Client</title>
 </head>
 <body>
-<h1>WebSocket Chat Client</h1>
 
 <div>
     <label for="message">Message:</label>
@@ -16,7 +15,6 @@
 </div>
 
 <div id="chat">
-    <h2>Chat Messages:</h2>
 </div>
 
 <script>
@@ -39,11 +37,19 @@
 
         socket2.onopen = function(event) {
             console.log("WebSocket connection noti opened.");
+            online_msg = {
+                type: "ONLINE_NOTIFICATION",
+                id_sender: "1",
+                id_receiver: "NOTIFICATION_1",
+                content: "online"
+            };
+            socket2.send(JSON.stringify(online_msg));
             appendMessage("Connected to the noti server.");
         };
 
         // Khi nhận được tin nhắn từ server
         socket.onmessage = function(event) {
+            console.log(event.data);
             const data = JSON.parse(event.data);
             const senderId = data.senderId;
             const message = data.message;
@@ -65,6 +71,13 @@
 
         socket2.onclose = function(event) {
             console.log("WebSocket connection noti closed.");
+            online_msg = {
+                type: "ONLINE_NOTIFICATION",
+                id_sender: "1",
+                id_receiver: "NOTIFICATION_1",
+                content: "offline"
+            };
+            socket2.send(JSON.stringify(online_msg));
             appendMessage("Disconnected from the noti server.");
         };
 
@@ -86,9 +99,11 @@
         if (socket && socket.readyState === WebSocket.OPEN) {
             // Gửi tin nhắn dưới dạng JSON
             const data = {
-                type: "message",
-                senderId: "userA",
-                message: message
+                id: Date.now().toString(),
+                id_sender: 1,
+                username: 'user1',
+                id_receiver: 1,
+                content: message,
             };
             socket.send(JSON.stringify(data));
             appendMessage(`You: ${message}`);

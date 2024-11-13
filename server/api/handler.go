@@ -214,10 +214,8 @@ func (h *Handler) GetListFriends(c echo.Context) error {
 }
 
 func (h *Handler) UpdateInteraction(c echo.Context) error {
-	idUser := c.Get("id")
-	idStr := idUser.(string)
-	idFr := c.Param("id")
-	err := h.s.UpdateInteraction(c.Request().Context(), idStr, idFr)
+	idRoom := c.Param("id")
+	err := h.s.UpdateInteraction(c.Request().Context(), idRoom)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest,
 			Response{

@@ -251,10 +251,10 @@ func (r *Repository) AddUserToRoom(ctx context.Context, tx *sql.Tx, idUser, idRo
 	return nil
 }
 
-func (r *Repository) UpdateInteraction(ctx context.Context, idUser, idFriend string) error {
+func (r *Repository) UpdateInteraction(ctx context.Context, idRoom string) error {
 	_, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := r.db.Exec("UPDATE friends SET interaction_at = $1 WHERE id_user = $2 AND id_friend = $3", time.Now(), idUser, idFriend)
+	_, err := r.db.Exec("UPDATE rooms SET interaction_at = $1 WHERE rooms.id = $2", time.Now(), idRoom)
 	if err != nil {
 		return err
 	}
@@ -411,33 +411,40 @@ func (r *Repository) GetListFriendAndMessage(ctx context.Context, username, inte
 			"u.id AS id_user, "+
 			"f.id AS id_friend, "+
 			"frd.username AS friend_username, "+
-			"frd.is_online AS is_online, COALESCE(MAX(f.interaction_at), '2021-01-01 00:00:00') AS interaction_at "+
+			"frd.is_online AS is_online, "+
+			"COALESCE(MAX(r.interaction_at), '2021-01-01 00:00:00') AS interaction_at "+
 			"FROM "+
 			"friends f "+
-			"JOIN users u ON u.id = f.id_user "+
-			"JOIN users frd ON frd.id = f.id_friend "+
-			"LEFT JOIN user_in_room uir1 ON uir1.id_user = u.id "+
-			"LEFT JOIN user_in_room uir2 ON uir2.id_user = frd.id AND uir1.id_room = uir2.id_room "+
-			"LEFT JOIN rooms r ON r.id = uir1.id_room AND r.id = uir2.id_room "+
+			"JOIN "+
+			"users u ON u.id = f.id_user "+
+			"JOIN "+
+			"users frd ON frd.id = f.id_friend "+
+			"LEFT JOIN "+
+			"user_in_room uir1 ON uir1.id_user = u.id "+
+			"LEFT JOIN "+
+			"user_in_room uir2 ON uir2.id_user = frd.id AND uir1.id_room = uir2.id_room "+
+			"LEFT JOIN "+
+			"rooms r ON r.id = uir1.id_room AND r.id = uir2.id_room "+
 			"WHERE "+
-			"u.username = $1 AND f.status = 'ACCEPTED' and f.interaction_at < $2 "+
+			"u.username = $1 "+
+			"AND f.status = 'ACCEPTED' "+
+			"and r.interaction_at < $2 "+
 			"GROUP BY "+
 			"f.id, frd.username, frd.is_online, u.id "+
 			"ORDER BY "+
 			"interaction_at DESC "+
 			"LIMIT $3 OFFSET $4) "+
 			"SELECT "+
-			"fwr.id_room, COALESCE(max(m.id), 0) AS id_message, fwr.friend_username, fwr.id_friend, fwr.is_online, "+
+			"fwr.id_room, m.content AS content_newest_msg, fwr.friend_username, fwr.id_friend, fwr.is_online, "+
 			"COALESCE(m.is_read, TRUE) AS is_read, fwr.interaction_at "+
 			"FROM "+
 			"friends_with_room fwr "+
 			"LEFT JOIN LATERAL "+
-			"(SELECT m.id, mrs.is_read FROM messages m "+
+			"(SELECT m.content, mrs.is_read FROM messages m "+
 			"LEFT JOIN message_read_status mrs ON mrs.id_message = m.id AND mrs.id_receiver = fwr.id_user "+
 			"WHERE "+
 			"m.id_receiver = fwr.id_room "+
-			"ORDER BY m.id DESC LIMIT 1) AS m ON TRUE "+
-			"GROUP BY fwr.id_room, fwr.friend_username, fwr.id_friend, m.is_read, fwr.interaction_at, is_online",
+			"ORDER BY m.id DESC LIMIT 1) AS m ON TRUE",
 		username, interactionAt, limit, offset)
 	if err != nil {
 		return nil, err
@@ -446,11 +453,72 @@ func (r *Repository) GetListFriendAndMessage(ctx context.Context, username, inte
 	var friends []FriendListResponse
 	for rows.Next() {
 		var friend FriendListResponse
-		err := rows.Scan(&friend.IdRoom, &friend.IdMessage, &friend.Username, &friend.Id, &friend.IsOnline, &friend.IsRead, &friend.InteractionAt)
+		err := rows.Scan(&friend.IdRoom, &friend.NewestMsg, &friend.Username, &friend.Id, &friend.IsOnline, &friend.IsRead, &friend.InteractionAt)
 		if err != nil {
 			return nil, err
 		}
 		friends = append(friends, friend)
 	}
 	return friends, nil
+}
+
+func (r *Repository) ChangeMessageReadState(ctx context.Context, idMessage, idReceiver string, state bool) error {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_, err := r.db.Exec("UPDATE message_read_status SET is_read = $1 WHERE id_message = $2 AND id_receiver = $3", state, idMessage, idReceiver)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Repository) GetMessageAndReadStateInRoom(ctx context.Context, idRoom string, limit, offset int) ([]MessagesInRoom, error) {
+	_, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	rows, err := r.db.Query(
+		"SELECT "+
+			"m.id AS message_id, "+
+			"m.create_at AS create_at, "+
+			"m.id_sender, "+
+			"u2.username, "+
+			"m.content, "+
+			"json_agg( "+
+			"json_build_object( "+
+			"'user_id', u.id, "+
+			"'username', u.username, "+
+			"'is_read', COALESCE(mrs.is_read, FALSE), "+
+			"'read_at', COALESCE(mrs.read_at, NULL) "+
+			") "+
+			") AS read_state "+
+			"FROM "+
+			"messages m "+
+			"join users u2 on u2.id = m.id_sender "+
+			"JOIN "+
+			"user_in_room uir ON uir.id_room = m.id_receiver "+
+			"JOIN "+
+			"users u ON u.id = uir.id_user "+
+			"LEFT JOIN "+
+			"message_read_status mrs ON mrs.id_message = m.id AND mrs.id_receiver = u.id "+
+			"WHERE "+
+			"m.id_receiver = $1 "+
+			"GROUP BY "+
+			"m.id, m.create_at, m.id_sender, m.content, u2.username "+
+			"ORDER BY "+
+			"m.id desc "+
+			"limit $2 offset $3",
+		idRoom, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var messages []MessagesInRoom
+	for rows.Next() {
+		var message MessagesInRoom
+		err := rows.Scan(&message.Id, &message.CreateAt, &message.IdSender, &message.UsernameSender, &message.Content, &message.ReadState)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, message)
+	}
+	return messages, nil
 }
