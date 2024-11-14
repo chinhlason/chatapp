@@ -12,7 +12,7 @@ const GET_LIST_FRIENDS_URL = (page, limit, pivot) => `/api/friend/list?page=${pa
 const SidebarComponent = ({onSelectFriend}) => {
     const id = Cookies.get('id');
     const username = Cookies.get('username');
-    const WEBSOCKET_URL = `ws://localhost:8080/ws/notification?userId=${id}&username=${username}`;
+    const WEBSOCKET_URL = `ws://localhost:8080/ws/notification?userId=${id}`;
     const nav = useNavigate();
     const [friends, setFriends] = useState([]);
     const [page, setPage] = useState(0);

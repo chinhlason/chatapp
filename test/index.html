@@ -12,6 +12,7 @@
     <label for="message">Message:</label>
     <input type="text" id="message" placeholder="Enter your message">
     <button onclick="sendMessage()">Send</button>
+    <button onclick="sendFriendReq()">Send Friend request</button>
 </div>
 
 <div id="chat">
@@ -30,12 +31,12 @@
         socket2 = new WebSocket(socketUrl2);
 
         // Khi kết nối được mở
-        socket.onopen = function(event) {
+        socket.onopen = function (event) {
             console.log("WebSocket connection opened.");
             appendMessage("Connected to the server.");
         };
 
-        socket2.onopen = function(event) {
+        socket2.onopen = function (event) {
             console.log("WebSocket connection noti opened.");
             online_msg = {
                 type: "ONLINE_NOTIFICATION",
@@ -48,28 +49,41 @@
         };
 
         // Khi nhận được tin nhắn từ server
-        socket.onmessage = function(event) {
-            console.log(event.data);
+        socket.onmessage = function (event) {
+            console.log("1", event.data);
             const data = JSON.parse(event.data);
-            const senderId = data.senderId;
-            const message = data.message;
+            const senderId = data.id_sender;
+            const message = data.content;
             appendMessage(`${senderId}: ${message}`);
         };
 
-        socket2.onmessage = function(event) {
+        socket2.onmessage = function (event) {
             const data = JSON.parse(event.data);
-            const senderId = data.sender_id;
-            const message = data.content;
-            appendMessage(`noti ${senderId}: ${message}`);
+            console.log("2", data);
+            if (data.type === "FRIEND_REQUEST_NOTIFICATION") {
+                if(data.content === "request") {
+                    console.log("vao day");
+                    appendFriendReq(data);
+                } else if (data.content === "accept") {
+                    appendMessage(`Friend request accepted by ${data.username_sender}`);
+                } else if (data.content === "deny") {
+                    appendMessage(`Friend request denied by ${data.username_sender}`);
+                }
+
+            } else {
+                const senderId = data.sender_id;
+                const message = data.content;
+                appendMessage(`noti ${senderId}: ${message}`);
+            }
         };
 
         // Khi kết nối bị đóng
-        socket.onclose = function(event) {
+        socket.onclose = function (event) {
             console.log("WebSocket connection closed.");
             appendMessage("Disconnected from the server.");
         };
 
-        socket2.onclose = function(event) {
+        socket2.onclose = function (event) {
             console.log("WebSocket connection noti closed.");
             online_msg = {
                 type: "ONLINE_NOTIFICATION",
@@ -82,13 +96,29 @@
         };
 
         // Khi có lỗi xảy ra
-        socket.onerror = function(error) {
+        socket.onerror = function (error) {
             console.error("WebSocket error:", error);
         };
 
-        socket2.onerror = function(error) {
+        socket2.onerror = function (error) {
             console.error("WebSocket error:", error);
         };
+    }
+
+    function sendFriendReq() {
+        if (socket2 && socket2.readyState === WebSocket.OPEN) {
+            const data = {
+                type: "FRIEND_REQUEST_NOTIFICATION",
+                id_sender: "1",
+                id_receiver: "2",
+                username_sender: "user1",
+                content: "request"
+            };
+            socket2.send(JSON.stringify(data));
+            appendMessage(`You: friend request`);
+        } else {
+            console.log("WebSocket FR is not open.");
+        }
     }
 
     // Gửi tin nhắn tới server
@@ -109,7 +139,7 @@
             appendMessage(`You: ${message}`);
             messageInput.value = ""; // Xóa nội dung sau khi gửi
         } else {
-            console.log("WebSocket is not open.");
+            console.log("WebSocket MSG is not open.");
         }
 
         if (socket2 && socket2.readyState === WebSocket.OPEN) {
@@ -124,7 +154,7 @@
             appendMessage(`You: ${message}`);
             messageInput.value = ""; // Xóa nội dung sau khi gửi
         } else {
-            console.log("WebSocket is not open.");
+            console.log("WebSocket NOTI is not open.");
         }
     }
 
@@ -134,6 +164,46 @@
         const messageParagraph = document.createElement("p");
         messageParagraph.textContent = text;
         chatDiv.appendChild(messageParagraph);
+    }
+
+    //hien thi the div co 2 nut accept va deny
+
+    function appendFriendReq(text) {
+        console.log("text", text);
+        const chatDiv = document.getElementById("chat");
+        const friendReqDiv = document.createElement("div");
+        const acceptButton = document.createElement("button");
+        const denyButton = document.createElement("button");
+        friendReqDiv.textContent = `${text.username_sender} sent you a friend request`;
+        acceptButton.textContent = "Accept";
+        denyButton.textContent = "Deny";
+        friendReqDiv.appendChild(acceptButton);
+        friendReqDiv.appendChild(denyButton);
+        acceptButton.onclick = function() {
+            const data = {
+                type: "FRIEND_REQUEST_NOTIFICATION",
+                id_sender: "1",
+                id_receiver: text.id_sender,
+                username_sender: "user1",
+                content: "accept"
+            };
+            socket2.send(JSON.stringify(data));
+            appendMessage(`You: friend request accepted`);
+            chatDiv.removeChild(friendReqDiv);
+        };
+        denyButton.onclick = function() {
+            const data = {
+                type: "FRIEND_REQUEST_NOTIFICATION",
+                id_sender: "1",
+                id_receiver: text.id_sender,
+                username_sender: "user1",
+                content: "deny"
+            };
+            socket2.send(JSON.stringify(data));
+            appendMessage(`You: friend request denied`);
+            chatDiv.removeChild(friendReqDiv);
+        };
+        chatDiv.appendChild(friendReqDiv);
     }
 
     // Khởi tạo kết nối WebSocket khi tải trang
