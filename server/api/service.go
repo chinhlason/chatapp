@@ -41,6 +41,14 @@ func (s *Service) GetUserByUsername(ctx context.Context, username string) (*User
 	return user, nil
 }
 
+func (s *Service) GetUserById(ctx context.Context, id string) (*User, error) {
+	user, err := s.r.GetUserById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func (s *Service) VerifyUser(ctx context.Context, username, password string) error {
 	user, err := s.r.GetUserByUsername(ctx, username)
 	if err != nil {

@@ -39,6 +39,7 @@ var upgrade = websocket.Upgrader{
 var (
 	chatRooms = make(map[string]*ChatRoom)
 	mu        sync.Mutex
+	clients   = make(map[string]*Client)
 )
 
 type WebSocketServer struct {
@@ -65,6 +66,8 @@ type Notifications struct {
 	Type           string `json:"type"`
 	Content        string `json:"content"`
 }
+
+// ws for chat room -------------------------------------------------------------------------------------------------------------------------------------------------//
 
 func (ws *WebSocketServer) HandleConnects(c echo.Context) error {
 	roomId := c.QueryParam("roomId")
@@ -109,14 +112,56 @@ func (ws *WebSocketServer) handleRoomConnection(conn *websocket.Conn, roomId, us
 	}
 }
 
+func (ws *WebSocketServer) broadcastMessage(ctx context.Context, senderId, roomId string, msg []byte) {
+	mu.Lock()
+	defer mu.Unlock()
+	room, ok := chatRooms[roomId]
+	if !ok {
+		log.Println("room 1 not found")
+		return
+	}
+
+	for id, client := range room.Clients {
+		if id != senderId {
+			err := client.Conn.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				log.Println("error while writing message: ", err)
+				return
+			}
+		}
+	}
+
+	var msgJson message
+	err := json.Unmarshal(msg, &msgJson)
+	err = ws.svc.UpdateInteraction(ctx, roomId)
+	if err != nil {
+		log.Println("error while updating interaction: ", err)
+	}
+	err = ws.svc.InsertMessage(ctx, senderId, roomId, msgJson.Content, time.Now())
+	if err != nil {
+		log.Println("error while inserting message: ", err)
+	}
+	fmt.Println("message sent to room: ", roomId)
+}
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+
+// ws for notification -------------------------------------------------------------------------------------------------------------------------------------------------//
+
 func (ws *WebSocketServer) HandleConnectMsgNotificationServer(c echo.Context) error {
 	userId := c.QueryParam("userId")
-	userName := c.QueryParam("username")
 
 	// Kiểm tra id người dùng
 	if userId == "" {
 		return errors.New("userId is empty")
 	}
+
+	//user, err := ws.svc.GetUserById(c.Request().Context(), userId)
+	//if err != nil {
+	//	return err
+	//}
+
+	userName := "user_test"
 
 	_ = ws.svc.ChangeOnlineStatus(c.Request().Context(), userId, true)
 
@@ -152,7 +197,6 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 	}
 
 	defer func() {
-		fmt.Println("vao day")
 		_ = ws.svc.ChangeOnlineStatus(context.Background(), userId, false)
 		for _, friend := range friends {
 			idRoomNoti := fmt.Sprintf("%s_%s", NOTIFICATION_KEY, friend.IdRoom)
@@ -182,6 +226,11 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 			}
 		}
 	}()
+
+	//tao ket noi de nhan Friend Request
+	mu.Lock()
+	clients[userId] = client
+	mu.Unlock()
 
 	//gui thong bao online den toan bo ban be
 	for _, friend := range friends {
@@ -220,55 +269,13 @@ func (ws *WebSocketServer) handleNotificationConnection(conn *websocket.Conn, us
 			continue
 		}
 
-		ws.broadcastNotifications(userId, notification.IdReceiver, notification.Type, msg)
+		if notification.Type == FRIEND_REQUEST_NOTIFICATION {
+			ws.broadcastFriendRequest(userId, notification.IdReceiver, msg)
+		} else {
+			ws.broadcastNotifications(userId, notification.IdReceiver, notification.Type, msg)
+		}
 	}
 	defer conn.Close()
-}
-
-func (ws *WebSocketServer) addClientToRoom(roomId string, client *Client) {
-	mu.Lock()
-	defer mu.Unlock()
-	room, ok := chatRooms[roomId]
-	if !ok {
-		room = &ChatRoom{
-			roomId:  roomId,
-			Clients: make(map[string]*Client),
-		}
-	}
-	room.Clients[client.userId] = client
-	chatRooms[roomId] = room
-}
-
-func (ws *WebSocketServer) broadcastMessage(ctx context.Context, senderId, roomId string, msg []byte) {
-	mu.Lock()
-	defer mu.Unlock()
-	room, ok := chatRooms[roomId]
-	if !ok {
-		log.Println("room 1 not found")
-		return
-	}
-
-	for id, client := range room.Clients {
-		if id != senderId {
-			err := client.Conn.WriteMessage(websocket.TextMessage, msg)
-			if err != nil {
-				log.Println("error while writing message: ", err)
-				return
-			}
-		}
-	}
-
-	var msgJson message
-	err := json.Unmarshal(msg, &msgJson)
-	err = ws.svc.UpdateInteraction(ctx, roomId)
-	if err != nil {
-		log.Println("error while updating interaction: ", err)
-	}
-	err = ws.svc.InsertMessage(ctx, senderId, roomId, msgJson.Content, time.Now())
-	if err != nil {
-		log.Println("error while inserting message: ", err)
-	}
-	fmt.Println("message sent to room: ", roomId)
 }
 
 func (ws *WebSocketServer) broadcastNotifications(idSender, idReceiver, typeMsg string, msg []byte) {
@@ -305,6 +312,52 @@ func (ws *WebSocketServer) broadcastNotifications(idSender, idReceiver, typeMsg 
 	}
 }
 
+func (ws *WebSocketServer) broadcastFriendRequest(idSender, idReceiver string, msg []byte) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	//idReceiver la id user nhan yeu cau ket ban
+	receiver, ok := clients[idReceiver]
+	if !ok {
+		log.Println("receiver not found")
+		err := ws.svc.SentFriendRequest(context.Background(), idSender, idReceiver)
+		if err != nil {
+			log.Println("error while sending friend request: ", err)
+			return
+		}
+		return
+	}
+
+	err := receiver.Conn.WriteMessage(websocket.TextMessage, msg)
+	if err != nil {
+		log.Println("error while writing message: ", err)
+		return
+	}
+	err = ws.svc.SentFriendRequest(context.Background(), idSender, idReceiver)
+	if err != nil {
+		log.Println("error while sending friend request: ", err)
+		return
+	}
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+
+// common function
+
+func (ws *WebSocketServer) addClientToRoom(roomId string, client *Client) {
+	mu.Lock()
+	defer mu.Unlock()
+	room, ok := chatRooms[roomId]
+	if !ok {
+		room = &ChatRoom{
+			roomId:  roomId,
+			Clients: make(map[string]*Client),
+		}
+	}
+	room.Clients[client.userId] = client
+	chatRooms[roomId] = room
+}
+
 func (ws *WebSocketServer) removeClientFromRoom(roomId, userid string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -318,3 +371,5 @@ func (ws *WebSocketServer) removeClientFromRoom(roomId, userid string) {
 		delete(chatRooms, roomId)
 	}
 }
+
+// -----------------------------------------//
